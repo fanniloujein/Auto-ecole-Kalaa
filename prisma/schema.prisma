@@ -1,0 +1,192 @@
+// Prisma schema — Plateforme de gestion Auto-École
+// Base de données : PostgreSQL (Supabase / Neon en production)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+/// Administrateur — seul utilisateur ayant accès à la plateforme
+model Admin {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("admins")
+}
+
+enum LicenseType {
+  A
+  A1
+  B
+  C
+  D
+  BE
+  CE
+}
+
+enum PaymentStatus {
+  PAYE
+  PARTIEL
+  NON_PAYE
+}
+
+/// Client / candidat de l'auto-école (ne se connecte jamais à la plateforme)
+model Client {
+  id               String      @id @default(cuid())
+  publicToken      String      @unique @default(cuid())
+  firstName        String
+  lastName         String
+  phone            String
+  whatsapp         String
+  cin              String      @unique
+  birthDate        DateTime?
+  address          String?
+  licenseType       LicenseType @default(B)
+  registrationDate DateTime    @default(now())
+  startDate        DateTime?
+  totalSessions    Int         @default(0)
+  doneSessions     Int         @default(0)
+  totalPrice       Float       @default(0)
+  paidAmount       Float       @default(0)
+  notes            String?
+  isActive         Boolean     @default(true)
+
+  packageId String?
+  package   Package? @relation(fields: [packageId], references: [id])
+
+  sessions Session[]
+  payments Payment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("clients")
+}
+
+enum SessionStatus {
+  PREVUE
+  EFFECTUEE
+  ANNULEE
+  ABSENCE
+}
+
+enum SessionType {
+  CONDUITE
+  CODE
+  EXAMEN_BLANC
+  AUTRE
+}
+
+model Session {
+  id        String        @id @default(cuid())
+  clientId  String
+  client    Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  date      DateTime
+  startTime String // "15:00"
+  endTime   String // "16:00"
+  type      SessionType   @default(CONDUITE)
+  status    SessionStatus @default(PREVUE)
+  notes     String?
+
+  instructorId String?
+  instructor   Instructor? @relation(fields: [instructorId], references: [id])
+
+  vehicleId String?
+  vehicle   Vehicle? @relation(fields: [vehicleId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("sessions")
+}
+
+enum PaymentMethod {
+  ESPECES
+  VIREMENT
+  CHEQUE
+  CARTE
+  AUTRE
+}
+
+model Payment {
+  id       String        @id @default(cuid())
+  clientId String
+  client   Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  amount   Float
+  date     DateTime      @default(now())
+  method   PaymentMethod @default(ESPECES)
+  reference String?
+  notes    String?
+
+  createdAt DateTime @default(now())
+
+  @@map("payments")
+}
+
+model Package {
+  id            String   @id @default(cuid())
+  name          String
+  description   String?
+  price         Float
+  sessionsCount Int
+  isActive      Boolean  @default(true)
+  clients       Client[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("packages")
+}
+
+model Vehicle {
+  id           String    @id @default(cuid())
+  brand        String
+  model        String
+  plateNumber  String    @unique
+  licenseType  LicenseType @default(B)
+  isActive     Boolean   @default(true)
+  sessions     Session[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("vehicles")
+}
+
+model Instructor {
+  id       String    @id @default(cuid())
+  firstName String
+  lastName  String
+  phone     String?
+  isActive  Boolean   @default(true)
+  sessions  Session[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("instructors")
+}
+
+model Settings {
+  id           String  @id @default(cuid())
+  schoolName   String  @default("Auto-École")
+  logoUrl      String?
+  address      String?
+  phone        String?
+  whatsapp     String?
+  email        String?
+  currency     String  @default("TND")
+
+  updatedAt DateTime @updatedAt
+
+  @@map("settings")
+}
