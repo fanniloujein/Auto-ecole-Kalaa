@@ -122,6 +122,17 @@ npm start
 
 ---
 
+## 6 bis. Déploiement sur Netlify
+
+Le fichier `netlify.toml` est déjà prêt : à chaque déploiement, Netlify applique les migrations (`prisma migrate deploy`) puis compile l'application.
+
+1. Sur [app.netlify.com](https://app.netlify.com) : **Add new site → Import an existing project → GitHub**, choisissez ce dépôt et la branche `main`.
+2. Dans **Site configuration → Environment variables**, ajoutez :
+   - `DATABASE_URL` : URL de connexion PostgreSQL (Supabase : URL du *pooler*, port 6543, avec `?pgbouncer=true`)
+   - `DIRECT_URL` : URL de connexion directe (Supabase : port 5432) — utilisée pour les migrations
+   - `NEXTAUTH_SECRET` : une longue chaîne aléatoire (`openssl rand -base64 32`)
+3. Lancez le déploiement (**Deploys → Trigger deploy**). Les mises à jour suivantes se déploient automatiquement à chaque modification de la branche `main`.
+
 ## 7. Créer votre propre compte admin (production)
 
 Ne gardez pas le compte de démonstration en production.

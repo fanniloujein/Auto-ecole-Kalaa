@@ -1,0 +1,5 @@
+# Déploiement Netlify (Next.js est pris en charge automatiquement par Netlify)
+[build]
+  # Applique les migrations de la base avant chaque build, puis compile l'application
+  command = "npx prisma migrate deploy && npm run build"
+  publish = ".next"

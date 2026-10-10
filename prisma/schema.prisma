@@ -2,7 +2,9 @@
 // Base de données : PostgreSQL (Supabase / Neon en production)
 
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  // "rhel-openssl-3.0.x" : moteur requis par les fonctions serverless (Netlify / AWS Lambda)
+  binaryTargets = ["native", "rhel-openssl-3.0.x"]
 }
 
 datasource db {
