@@ -1,9 +1,9 @@
 import { prisma } from "@/lib/prisma";
 import { SettingsTabs } from "@/components/settings-tabs";
+import { tariffsFrom } from "@/lib/billing";
 
 export default async function ParametresPage() {
-  const [packages, vehicles, instructors, settings] = await Promise.all([
-    prisma.package.findMany({ orderBy: { createdAt: "desc" } }),
+  const [vehicles, instructors, settings] = await Promise.all([
     prisma.vehicle.findMany({ orderBy: { createdAt: "desc" } }),
     prisma.instructor.findMany({ orderBy: { createdAt: "desc" } }),
     prisma.settings.findFirst(),
@@ -14,12 +14,12 @@ export default async function ParametresPage() {
       <div>
         <h1 className="text-2xl font-bold text-slate-900">Paramètres</h1>
         <p className="text-slate-500 text-sm mt-1">
-          Formules, véhicules, moniteurs et informations générales
+          Tarifs, véhicules, moniteurs et informations générales
         </p>
       </div>
 
       <SettingsTabs
-        packages={packages}
+        tariffs={tariffsFrom(settings)}
         vehicles={vehicles}
         instructors={instructors}
         settings={

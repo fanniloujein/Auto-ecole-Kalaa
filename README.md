@@ -1,6 +1,6 @@
 # 🚗 Plateforme de gestion — Auto-École
 
-Plateforme interne complète pour la gestion d'une auto-école : clients, séances, paiements, planning, formules, et envoi automatique des informations aux clients via WhatsApp.
+Plateforme interne complète pour la gestion d'une auto-école : clients, inscriptions, séances, examens, paiements, dépenses, planning, et envoi des informations aux clients via WhatsApp.
 
 **Principe : un seul utilisateur se connecte — l'administrateur.** Les clients n'ont pas de compte et reçoivent leurs informations uniquement via WhatsApp.
 
@@ -14,27 +14,27 @@ Plateforme interne complète pour la gestion d'une auto-école : clients, séanc
 
 ## Fonctionnalités
 
-- Dashboard avec statistiques (clients, séances du jour, revenus, séances restantes...)
-- Gestion complète des clients (CRUD, recherche, filtres, fiche détaillée)
-- Gestion des séances (calendrier + liste, statuts : prévue/effectuée/annulée/absence)
-- Planning mensuel visuel
-- Gestion des paiements avec calcul automatique du montant restant et statut (payé / partiel / non payé)
-- Gestion des formules/prix, véhicules et moniteurs
-- **Bouton "Envoyer sur WhatsApp"** : génère un message pré-rempli avec uniquement les informations utiles au client (jamais les notes internes) et ouvre `wa.me` avec le numéro du client
-- **Génération de fiche PDF** : page imprimable (bouton "Télécharger / Imprimer en PDF" → impression navigateur en PDF)
+- **Tableau de bord** : clients actifs, séances du jour, examens à venir, taux de réussite, et finances du mois (encaissements, dépenses, résultat net, reste à percevoir)
+- **Clients** : CRUD, recherche, filtres (permis, statut, situation financière), fiche détaillée
+- **Tarification à l'heure + frais d'inscription** (configurable dans **Paramètres → Tarifs**) :
+
+  | Prestation | Tarif par défaut |
+  | --- | --- |
+  | 1 heure de conduite (et de park) | 28 TND |
+  | 1 heure de code | 10 TND |
+  | Inscription code | 100 TND |
+  | Inscription conduite | 200 TND |
+  | Inscription park | 200 TND |
+
+  Seules les séances **effectuées** sont facturées, au prorata de leur durée (1 h 30 de conduite = 42 TND). Le tarif est figé sur chaque séance et chaque inscription : un changement de tarif ne modifie pas l'historique.
+- **Examens** (code, park, conduite) : résultats *Programmé / Réussi / Échoué / Absent*, **nombre de passages illimité** (en cas d'échec, on programme un nouveau passage), frais d'examen optionnels, taux de réussite par examen
+- **Paiements séparés par compte** : inscription, conduite, code, examens — avec, pour chaque client et chaque compte, le montant dû, payé et le reste (ou l'avance)
+- **Dépenses / sorties d'argent** : carburant, entretien, assurance, salaires, loyer, factures, frais d'examen, taxes, fournitures... avec filtres par mois et répartition par catégorie
+- Séances (calendrier + liste, statuts : prévue / effectuée / annulée / absence) et planning mensuel
+- Véhicules et moniteurs
+- **Bouton « Envoyer le point sur WhatsApp »** : message pré-rempli avec uniquement les informations utiles au client (examens, heures, situation de chaque compte — jamais les notes internes)
+- **Fiche client PDF** : page imprimable avec relevé de compte, parcours d'examens et historique des paiements (bouton « Télécharger / Imprimer en PDF »), aussi accessible par un lien public non devinable
 - Design responsive (desktop / tablette / mobile), thème bleu/blanc/gris
-
----
-
-## ⚠️ Note importante sur cet environnement de génération
-
-Ce projet a été développé et son code entièrement écrit et **vérifié par compilation TypeScript et build Next.js** dans un environnement sandboxé dont l'accès réseau est limité à une liste blanche de domaines (npm, GitHub, apt...). Cette liste blanche **n'inclut pas `binaries.prisma.sh`**, le serveur depuis lequel Prisma télécharge son moteur de requête natif.
-
-Conséquence concrète :
-- ✅ Tout le code (composants, pages, server actions, schéma Prisma, validation, auth) a été écrit et son typage TypeScript **validé avec succès** (`next build` passe la compilation et la vérification de types).
-- ⚠️ Je n'ai **pas pu exécuter** `prisma generate`, `prisma migrate dev`, ni un build de bout en bout avec une vraie base de données dans cette sandbox, car le téléchargement du moteur Prisma a été bloqué par le pare-feu réseau (erreur 403 sur `binaries.prisma.sh`).
-
-**Sur votre machine ou sur Vercel, ce problème n'existe pas** : `npm install` déclenchera normalement `prisma generate` (configuré dans `postinstall`) et tout fonctionnera. Suivez simplement les étapes ci-dessous.
 
 ---
 
@@ -74,12 +74,12 @@ NEXTAUTH_URL="http://localhost:3000"
 ## 3. Créer les tables et les données de démonstration
 
 ```bash
-npx prisma migrate dev --name init
+npx prisma migrate deploy
 npm run db:seed
 ```
 
-Cela crée toutes les tables (Admin, Client, Session, Payment, Package, Vehicle, Instructor, Settings) et des données de test :
-- 5 clients, 10 séances, plusieurs paiements, 4 formules, véhicules et moniteurs
+Cela crée toutes les tables (Admin, Client, Session, Exam, Payment, Expense, Vehicle, Instructor, Settings) et des données de test (uniquement si la base ne contient encore aucun client) :
+- 4 clients, des séances, des examens (dont un échec suivi d'un nouveau passage), des paiements par compte, des dépenses, véhicules et moniteurs
 - **Un compte admin de démonstration** :
   - Email : `admin@auto-ecole.tn`
   - Mot de passe : `Admin123!`
@@ -158,17 +158,22 @@ Exécutez avec `npx tsx scripts/create-admin.ts`, puis supprimez le compte de d�
     /clients
     /clients/[id]
     /seances
+    /examens
     /paiements
+    /depenses
     /planning
     /parametres
   /clients/[id]/fiche        → fiche imprimable (PDF) — hors layout dashboard
+  /fiche/[token]             → fiche publique (lien envoyé au client)
   /api/auth/[...nextauth]    → route NextAuth
 
 /components                  → composants réutilisables (tables, modales, formulaires...)
 /actions                      → Server Actions (CRUD sécurisé, vérifie la session admin)
 /lib                          → prisma client, auth config, validation zod, utilitaires, whatsapp
+  billing.ts                  → calcul des comptes client (tarifs, heures, soldes par compte, examens)
+  labels.ts                   → libellés partagés (types de séance, examens, comptes, dépenses)
 /prisma
-  schema.prisma               → schéma complet (8 modèles + relations)
+  schema.prisma               → schéma complet (9 modèles + relations)
   seed.ts                      → données de démonstration
 ```
 
@@ -185,5 +190,19 @@ Exécutez avec `npx tsx scripts/create-admin.ts`, puis supprimez le compte de d�
 
 - **Modifier les couleurs** : `app/globals.css` (variables `--brand`, `--accent`).
 - **Renommer l'auto-école / logo / coordonnées** : page **Paramètres → Informations générales** dans le dashboard (aucune modification de code nécessaire).
-- **Modifier les formules et prix** : page **Paramètres → Formules & prix**.
+- **Modifier les tarifs** (heure de conduite, heure de code, frais d'inscription) : page **Paramètres → Tarifs**.
 - **Format du numéro WhatsApp** : `lib/whatsapp.ts` → fonction `normalizePhoneForWhatsapp` (indicatif Tunisie `216` par défaut, ajustable).
+
+## Mise à jour d'une base existante
+
+La migration `20261010120000_tarifs_examens_depenses` remplace les anciennes « formules » par la tarification à l'heure. Sur une base déjà en service :
+
+```bash
+DATABASE_URL="..." DIRECT_URL="..." npx prisma migrate deploy
+```
+
+Ce qu'elle fait sur les données existantes :
+- supprime la table des formules et les champs manuels du client (total séances, prix total, montant payé) : le montant dû et le montant payé sont désormais **calculés** à partir des séances, inscriptions, examens et paiements ;
+- applique les tarifs par défaut aux séances existantes (28 TND/h conduite, 10 TND/h code) et transforme les séances « examen blanc » en séances de code ;
+- affecte les paiements existants au compte « Conduite » (modifiable en supprimant / ressaisissant le paiement) ;
+- les inscriptions des clients existants sont à cocher dans leur fiche (bouton **Modifier**).

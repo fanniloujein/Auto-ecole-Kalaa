@@ -50,21 +50,23 @@ model Client {
   cin              String      @unique
   birthDate        DateTime?
   address          String?
-  licenseType       LicenseType @default(B)
+  licenseType      LicenseType @default(B)
   registrationDate DateTime    @default(now())
   startDate        DateTime?
-  totalSessions    Int         @default(0)
-  doneSessions     Int         @default(0)
-  totalPrice       Float       @default(0)
-  paidAmount       Float       @default(0)
   notes            String?
   isActive         Boolean     @default(true)
 
-  packageId String?
-  package   Package? @relation(fields: [packageId], references: [id])
+  // Inscriptions (frais figés au moment de l'inscription)
+  registeredCode         Boolean @default(false)
+  registeredConduite     Boolean @default(false)
+  registeredPark         Boolean @default(false)
+  feeInscriptionCode     Float   @default(0)
+  feeInscriptionConduite Float   @default(0)
+  feeInscriptionPark     Float   @default(0)
 
   sessions Session[]
   payments Payment[]
+  exams    Exam[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -81,21 +83,23 @@ enum SessionStatus {
 
 enum SessionType {
   CONDUITE
+  PARK
   CODE
-  EXAMEN_BLANC
   AUTRE
 }
 
 model Session {
-  id        String        @id @default(cuid())
-  clientId  String
-  client    Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  date      DateTime
-  startTime String // "15:00"
-  endTime   String // "16:00"
-  type      SessionType   @default(CONDUITE)
-  status    SessionStatus @default(PREVUE)
-  notes     String?
+  id         String        @id @default(cuid())
+  clientId   String
+  client     Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  date       DateTime
+  startTime  String // "15:00"
+  endTime    String // "16:00"
+  type       SessionType   @default(CONDUITE)
+  status     SessionStatus @default(PREVUE)
+  /// Tarif horaire appliqué (figé à la création de la séance)
+  hourlyRate Float         @default(0)
+  notes      String?
 
   instructorId String?
   instructor   Instructor? @relation(fields: [instructorId], references: [id])
@@ -117,44 +121,103 @@ enum PaymentMethod {
   AUTRE
 }
 
+/// Compte auquel un paiement client est affecté
+enum PaymentCategory {
+  INSCRIPTION
+  CONDUITE
+  CODE
+  EXAMEN
+}
+
 model Payment {
-  id       String        @id @default(cuid())
-  clientId String
-  client   Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  amount   Float
-  date     DateTime      @default(now())
-  method   PaymentMethod @default(ESPECES)
+  id        String          @id @default(cuid())
+  clientId  String
+  client    Client          @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  amount    Float
+  date      DateTime        @default(now())
+  category  PaymentCategory @default(CONDUITE)
+  method    PaymentMethod   @default(ESPECES)
   reference String?
-  notes    String?
+  notes     String?
 
   createdAt DateTime @default(now())
 
   @@map("payments")
 }
 
-model Package {
-  id            String   @id @default(cuid())
-  name          String
-  description   String?
-  price         Float
-  sessionsCount Int
-  isActive      Boolean  @default(true)
-  clients       Client[]
+enum ExamType {
+  CODE
+  PARK
+  CONDUITE
+}
+
+enum ExamResult {
+  PROGRAMME
+  REUSSI
+  ECHOUE
+  ABSENT
+}
+
+/// Passage d'examen officiel — un client peut repasser un examen autant de fois que nécessaire
+model Exam {
+  id       String     @id @default(cuid())
+  clientId String
+  client   Client     @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  type     ExamType
+  date     DateTime
+  time     String?
+  result   ExamResult @default(PROGRAMME)
+  /// Frais d'examen facturés au client (0 si inclus)
+  fee      Float      @default(0)
+  location String?
+  notes    String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@map("packages")
+  @@index([clientId, type])
+  @@map("exams")
+}
+
+enum ExpenseCategory {
+  CARBURANT
+  ENTRETIEN
+  ASSURANCE
+  SALAIRE
+  LOYER
+  FACTURES
+  FRAIS_EXAMEN
+  TAXES
+  FOURNITURES
+  AUTRE
+}
+
+/// Dépense / sortie d'argent de l'auto-école
+model Expense {
+  id        String          @id @default(cuid())
+  label     String
+  category  ExpenseCategory @default(AUTRE)
+  amount    Float
+  date      DateTime        @default(now())
+  method    PaymentMethod   @default(ESPECES)
+  reference String?
+  notes     String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([date])
+  @@map("expenses")
 }
 
 model Vehicle {
-  id           String    @id @default(cuid())
-  brand        String
-  model        String
-  plateNumber  String    @unique
-  licenseType  LicenseType @default(B)
-  isActive     Boolean   @default(true)
-  sessions     Session[]
+  id          String      @id @default(cuid())
+  brand       String
+  model       String
+  plateNumber String      @unique
+  licenseType LicenseType @default(B)
+  isActive    Boolean     @default(true)
+  sessions    Session[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -163,7 +226,7 @@ model Vehicle {
 }
 
 model Instructor {
-  id       String    @id @default(cuid())
+  id        String    @id @default(cuid())
   firstName String
   lastName  String
   phone     String?
@@ -177,14 +240,21 @@ model Instructor {
 }
 
 model Settings {
-  id           String  @id @default(cuid())
-  schoolName   String  @default("Auto-École")
-  logoUrl      String?
-  address      String?
-  phone        String?
-  whatsapp     String?
-  email        String?
-  currency     String  @default("TND")
+  id         String  @id @default(cuid())
+  schoolName String  @default("Auto-École")
+  logoUrl    String?
+  address    String?
+  phone      String?
+  whatsapp   String?
+  email      String?
+  currency   String  @default("TND")
+
+  // Tarifs
+  priceHourConduite      Float @default(28)
+  priceHourCode          Float @default(10)
+  feeInscriptionCode     Float @default(100)
+  feeInscriptionConduite Float @default(200)
+  feeInscriptionPark     Float @default(200)
 
   updatedAt DateTime @updatedAt
 

@@ -4,12 +4,27 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { sessionSchema } from "@/lib/validation";
+import { hourlyRateFor, tariffsFrom } from "@/lib/billing";
 import type { ActionResult } from "@/actions/clients";
 
 async function requireAdmin() {
   const session = await auth();
   if (!session?.user) throw new Error("Non autorisé");
   return session;
+}
+
+async function currentRate(type: string) {
+  const settings = await prisma.settings.findFirst();
+  return hourlyRateFor(type, tariffsFrom(settings));
+}
+
+function revalidateSessionPages(clientId: string) {
+  revalidatePath("/seances");
+  revalidatePath("/planning");
+  revalidatePath("/dashboard");
+  revalidatePath("/clients");
+  revalidatePath("/paiements");
+  revalidatePath(`/clients/${clientId}`);
 }
 
 export async function createSession(input: unknown): Promise<ActionResult> {
@@ -29,23 +44,14 @@ export async function createSession(input: unknown): Promise<ActionResult> {
         endTime: data.endTime,
         type: data.type,
         status: data.status,
+        hourlyRate: await currentRate(data.type),
         instructorId: data.instructorId || null,
         vehicleId: data.vehicleId || null,
         notes: data.notes || null,
       },
     });
 
-    if (data.status === "EFFECTUEE") {
-      await prisma.client.update({
-        where: { id: data.clientId },
-        data: { doneSessions: { increment: 1 } },
-      });
-    }
-
-    revalidatePath("/seances");
-    revalidatePath("/planning");
-    revalidatePath("/dashboard");
-    revalidatePath(`/clients/${data.clientId}`);
+    revalidateSessionPages(data.clientId);
     return { success: true, data: created };
   } catch {
     return { success: false, error: "Erreur lors de la création de la séance" };
@@ -62,6 +68,11 @@ export async function updateSession(id: string, input: unknown): Promise<ActionR
 
   try {
     const previous = await prisma.session.findUnique({ where: { id } });
+    if (!previous) return { success: false, error: "Séance introuvable" };
+
+    // Le tarif reste celui de la création, sauf si le type de séance change
+    const hourlyRate =
+      previous.type === data.type ? previous.hourlyRate : await currentRate(data.type);
 
     const updated = await prisma.session.update({
       where: { id },
@@ -72,29 +83,15 @@ export async function updateSession(id: string, input: unknown): Promise<ActionR
         endTime: data.endTime,
         type: data.type,
         status: data.status,
+        hourlyRate,
         instructorId: data.instructorId || null,
         vehicleId: data.vehicleId || null,
         notes: data.notes || null,
       },
     });
 
-    // Ajuste le compteur de séances effectuées si le statut a changé
-    if (previous && previous.status !== "EFFECTUEE" && data.status === "EFFECTUEE") {
-      await prisma.client.update({
-        where: { id: data.clientId },
-        data: { doneSessions: { increment: 1 } },
-      });
-    } else if (previous && previous.status === "EFFECTUEE" && data.status !== "EFFECTUEE") {
-      await prisma.client.update({
-        where: { id: data.clientId },
-        data: { doneSessions: { decrement: 1 } },
-      });
-    }
-
-    revalidatePath("/seances");
-    revalidatePath("/planning");
-    revalidatePath("/dashboard");
-    revalidatePath(`/clients/${data.clientId}`);
+    revalidateSessionPages(data.clientId);
+    if (previous.clientId !== data.clientId) revalidatePath(`/clients/${previous.clientId}`);
     return { success: true, data: updated };
   } catch {
     return { success: false, error: "Erreur lors de la mise à jour de la séance" };
@@ -104,10 +101,8 @@ export async function updateSession(id: string, input: unknown): Promise<ActionR
 export async function deleteSession(id: string): Promise<ActionResult> {
   await requireAdmin();
   try {
-    await prisma.session.delete({ where: { id } });
-    revalidatePath("/seances");
-    revalidatePath("/planning");
-    revalidatePath("/dashboard");
+    const session = await prisma.session.delete({ where: { id } });
+    revalidateSessionPages(session.clientId);
     return { success: true };
   } catch {
     return { success: false, error: "Erreur lors de la suppression de la séance" };

@@ -6,7 +6,8 @@ import { Plus, Pencil, Trash2 } from "lucide-react";
 import { Modal } from "@/components/modal";
 import { useToast } from "@/components/toast";
 import { createSession, updateSession, deleteSession } from "@/actions/sessions";
-import { formatDate, sessionStatusColor, sessionStatusLabel } from "@/lib/utils";
+import { formatCurrency, formatDate, sessionStatusColor, sessionStatusLabel } from "@/lib/utils";
+import { sessionTypeLabels } from "@/lib/labels";
 import type { InstructorListItem, VehicleListItem } from "@/types";
 
 interface SessionItem {
@@ -17,16 +18,12 @@ interface SessionItem {
   type: string;
   status: string;
   notes: string | null;
+  amount: number;
+  instructorId: string | null;
   instructorName: string | null;
+  vehicleId: string | null;
   vehicleLabel: string | null;
 }
-
-const typeLabels: Record<string, string> = {
-  CONDUITE: "Conduite",
-  CODE: "Code",
-  EXAMEN_BLANC: "Examen blanc",
-  AUTRE: "Autre",
-};
 
 export function ClientSessionsSection({
   clientId,
@@ -130,12 +127,17 @@ export function ClientSessionsSection({
                 {formatDate(s.date)} · {s.startTime} - {s.endTime}
               </p>
               <p className="text-xs text-slate-400">
-                {typeLabels[s.type] ?? s.type}
+                {sessionTypeLabels[s.type] ?? s.type}
                 {s.instructorName ? ` · ${s.instructorName}` : ""}
                 {s.vehicleLabel ? ` · ${s.vehicleLabel}` : ""}
               </p>
             </div>
             <div className="flex items-center gap-2">
+              {s.amount > 0 && (
+                <span className="text-xs font-medium text-slate-600 whitespace-nowrap">
+                  {formatCurrency(s.amount)}
+                </span>
+              )}
               <span
                 className={`text-xs font-medium px-2 py-1 rounded-full border ${sessionStatusColor(
                   s.status
@@ -180,7 +182,7 @@ export function ClientSessionsSection({
             <div>
               <label className={labelClass}>Type</label>
               <select name="type" defaultValue={editing?.type ?? "CONDUITE"} className={inputClass}>
-                {Object.entries(typeLabels).map(([v, l]) => (
+                {Object.entries(sessionTypeLabels).map(([v, l]) => (
                   <option key={v} value={v}>
                     {l}
                   </option>
@@ -218,7 +220,11 @@ export function ClientSessionsSection({
             </div>
             <div>
               <label className={labelClass}>Moniteur</label>
-              <select name="instructorId" defaultValue="" className={inputClass}>
+              <select
+                name="instructorId"
+                defaultValue={editing?.instructorId ?? ""}
+                className={inputClass}
+              >
                 <option value="">—</option>
                 {instructors.map((i) => (
                   <option key={i.id} value={i.id}>
@@ -229,7 +235,7 @@ export function ClientSessionsSection({
             </div>
             <div className="col-span-2">
               <label className={labelClass}>Véhicule</label>
-              <select name="vehicleId" defaultValue="" className={inputClass}>
+              <select name="vehicleId" defaultValue={editing?.vehicleId ?? ""} className={inputClass}>
                 <option value="">—</option>
                 {vehicles.map((v) => (
                   <option key={v.id} value={v.id}>

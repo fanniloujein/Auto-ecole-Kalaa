@@ -26,19 +26,16 @@ export async function createPayment(input: unknown): Promise<ActionResult> {
         clientId: data.clientId,
         amount: data.amount,
         date: new Date(data.date),
+        category: data.category,
         method: data.method,
         reference: data.reference || null,
         notes: data.notes || null,
       },
     });
 
-    await prisma.client.update({
-      where: { id: data.clientId },
-      data: { paidAmount: { increment: data.amount } },
-    });
-
     revalidatePath("/paiements");
     revalidatePath("/dashboard");
+    revalidatePath("/clients");
     revalidatePath(`/clients/${data.clientId}`);
     return { success: true, data: payment };
   } catch {
@@ -52,16 +49,11 @@ export async function deletePayment(id: string): Promise<ActionResult> {
     const payment = await prisma.payment.findUnique({ where: { id } });
     if (!payment) return { success: false, error: "Paiement introuvable" };
 
-    await prisma.$transaction([
-      prisma.payment.delete({ where: { id } }),
-      prisma.client.update({
-        where: { id: payment.clientId },
-        data: { paidAmount: { decrement: payment.amount } },
-      }),
-    ]);
+    await prisma.payment.delete({ where: { id } });
 
     revalidatePath("/paiements");
     revalidatePath("/dashboard");
+    revalidatePath("/clients");
     revalidatePath(`/clients/${payment.clientId}`);
     return { success: true };
   } catch {

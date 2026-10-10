@@ -7,32 +7,30 @@ import { Modal } from "@/components/modal";
 import { useToast } from "@/components/toast";
 import { createPayment, deletePayment } from "@/actions/payments";
 import { formatCurrency, formatDate } from "@/lib/utils";
+import { paymentCategoryLabels, paymentCategoryOrder, paymentMethodLabels } from "@/lib/labels";
+import type { AccountLine } from "@/lib/billing";
 
 interface PaymentItem {
   id: string;
   amount: number;
   date: string;
+  category: string;
   method: string;
   reference: string | null;
   notes: string | null;
 }
 
-const methodLabels: Record<string, string> = {
-  ESPECES: "Espèces",
-  VIREMENT: "Virement",
-  CHEQUE: "Chèque",
-  CARTE: "Carte",
-  AUTRE: "Autre",
-};
-
 export function ClientPaymentsSection({
   clientId,
   payments,
   clientName,
+  lines,
 }: {
   clientId: string;
   payments: PaymentItem[];
   clientName: string;
+  /** Solde par compte, pour proposer par défaut le compte qui a un reste à payer */
+  lines: Record<string, AccountLine>;
 }) {
   const router = useRouter();
   const { notify } = useToast();
@@ -47,6 +45,7 @@ export function ClientPaymentsSection({
       clientId,
       amount: formData.get("amount"),
       date: formData.get("date"),
+      category: formData.get("category"),
       method: formData.get("method"),
       reference: formData.get("reference") || null,
       notes: formData.get("notes") || null,
@@ -78,6 +77,9 @@ export function ClientPaymentsSection({
     });
   }
 
+  const defaultCategory =
+    paymentCategoryOrder.find((c) => lines[c] && lines[c].balance > 0) ?? "CONDUITE";
+
   const inputClass =
     "w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600";
   const labelClass = "block text-xs font-medium text-slate-600 mb-1";
@@ -103,9 +105,14 @@ export function ClientPaymentsSection({
         {payments.map((p) => (
           <div key={p.id} className="flex items-center justify-between px-5 py-3">
             <div>
-              <p className="text-sm font-medium text-slate-800">{formatCurrency(p.amount)}</p>
+              <p className="text-sm font-medium text-slate-800">
+                {formatCurrency(p.amount)}
+                <span className="ml-2 text-xs font-medium text-slate-500 bg-slate-100 rounded px-1.5 py-0.5">
+                  {paymentCategoryLabels[p.category] ?? p.category}
+                </span>
+              </p>
               <p className="text-xs text-slate-400">
-                {formatDate(p.date)} · {methodLabels[p.method] ?? p.method}
+                {formatDate(p.date)} · {paymentMethodLabels[p.method] ?? p.method}
                 {p.reference ? ` · Réf: ${p.reference}` : ""}
               </p>
             </div>
@@ -122,6 +129,19 @@ export function ClientPaymentsSection({
       <Modal open={modalOpen} onClose={() => setModalOpen(false)} title="Enregistrer un paiement">
         <form action={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-2 gap-3">
+            <div className="col-span-2">
+              <label className={labelClass}>Compte *</label>
+              <select name="category" defaultValue={defaultCategory} className={inputClass}>
+                {paymentCategoryOrder.map((c) => (
+                  <option key={c} value={c}>
+                    {paymentCategoryLabels[c]}
+                    {lines[c] && lines[c].balance > 0
+                      ? ` — reste ${formatCurrency(lines[c].balance)}`
+                      : ""}
+                  </option>
+                ))}
+              </select>
+            </div>
             <div>
               <label className={labelClass}>Montant *</label>
               <input
@@ -146,7 +166,7 @@ export function ClientPaymentsSection({
             <div>
               <label className={labelClass}>Mode de paiement</label>
               <select name="method" defaultValue="ESPECES" className={inputClass}>
-                {Object.entries(methodLabels).map(([v, l]) => (
+                {Object.entries(paymentMethodLabels).map(([v, l]) => (
                   <option key={v} value={v}>
                     {l}
                   </option>

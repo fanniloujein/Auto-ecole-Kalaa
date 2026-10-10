@@ -3,62 +3,13 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
-import {
-  packageSchema,
-  vehicleSchema,
-  instructorSchema,
-  settingsSchema,
-} from "@/lib/validation";
+import { vehicleSchema, instructorSchema, settingsSchema, tariffsSchema } from "@/lib/validation";
 import type { ActionResult } from "@/actions/clients";
 
 async function requireAdmin() {
   const session = await auth();
   if (!session?.user) throw new Error("Non autorisé");
   return session;
-}
-
-// ---------- Formules (Packages) ----------
-
-export async function createPackage(input: unknown): Promise<ActionResult> {
-  await requireAdmin();
-  const parsed = packageSchema.safeParse(input);
-  if (!parsed.success) return { success: false, error: parsed.error.issues[0]?.message };
-  try {
-    const pkg = await prisma.package.create({
-      data: { ...parsed.data, isActive: parsed.data.isActive ?? true },
-    });
-    revalidatePath("/parametres");
-    return { success: true, data: pkg };
-  } catch {
-    return { success: false, error: "Erreur lors de la création de la formule" };
-  }
-}
-
-export async function updatePackage(id: string, input: unknown): Promise<ActionResult> {
-  await requireAdmin();
-  const parsed = packageSchema.safeParse(input);
-  if (!parsed.success) return { success: false, error: parsed.error.issues[0]?.message };
-  try {
-    const pkg = await prisma.package.update({
-      where: { id },
-      data: { ...parsed.data, isActive: parsed.data.isActive ?? true },
-    });
-    revalidatePath("/parametres");
-    return { success: true, data: pkg };
-  } catch {
-    return { success: false, error: "Erreur lors de la mise à jour de la formule" };
-  }
-}
-
-export async function deletePackage(id: string): Promise<ActionResult> {
-  await requireAdmin();
-  try {
-    await prisma.package.delete({ where: { id } });
-    revalidatePath("/parametres");
-    return { success: true };
-  } catch {
-    return { success: false, error: "Impossible de supprimer : formule utilisée par des clients" };
-  }
 }
 
 // ---------- Véhicules ----------
@@ -174,5 +125,25 @@ export async function updateSettings(input: unknown): Promise<ActionResult> {
     return { success: true, data: settings };
   } catch {
     return { success: false, error: "Erreur lors de la mise à jour des paramètres" };
+  }
+}
+
+// ---------- Tarifs ----------
+
+export async function updateTariffs(input: unknown): Promise<ActionResult> {
+  await requireAdmin();
+  const parsed = tariffsSchema.safeParse(input);
+  if (!parsed.success) return { success: false, error: parsed.error.issues[0]?.message };
+  try {
+    const existing = await prisma.settings.findFirst();
+    const settings = existing
+      ? await prisma.settings.update({ where: { id: existing.id }, data: parsed.data })
+      : await prisma.settings.create({ data: parsed.data });
+
+    revalidatePath("/parametres");
+    revalidatePath("/clients");
+    return { success: true, data: settings };
+  } catch {
+    return { success: false, error: "Erreur lors de la mise à jour des tarifs" };
   }
 }

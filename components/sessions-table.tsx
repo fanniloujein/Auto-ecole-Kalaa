@@ -6,7 +6,8 @@ import { Plus, Pencil, Trash2, Search } from "lucide-react";
 import { Modal } from "@/components/modal";
 import { useToast } from "@/components/toast";
 import { createSession, updateSession, deleteSession } from "@/actions/sessions";
-import { formatDate, sessionStatusColor, sessionStatusLabel } from "@/lib/utils";
+import { formatCurrency, formatDate, sessionStatusColor, sessionStatusLabel } from "@/lib/utils";
+import { sessionTypeLabels } from "@/lib/labels";
 import type { InstructorListItem, VehicleListItem } from "@/types";
 
 interface SessionRow {
@@ -19,18 +20,12 @@ interface SessionRow {
   type: string;
   status: string;
   notes: string | null;
+  amount: number;
   instructorId: string | null;
   instructorName: string | null;
   vehicleId: string | null;
   vehicleLabel: string | null;
 }
-
-const typeLabels: Record<string, string> = {
-  CONDUITE: "Conduite",
-  CODE: "Code",
-  EXAMEN_BLANC: "Examen blanc",
-  AUTRE: "Autre",
-};
 
 export function SessionsTable({
   initialSessions,
@@ -165,6 +160,7 @@ export function SessionsTable({
                 <th className="text-left px-4 py-3 font-medium">Type</th>
                 <th className="text-left px-4 py-3 font-medium">Moniteur / Véhicule</th>
                 <th className="text-left px-4 py-3 font-medium">Statut</th>
+                <th className="text-right px-4 py-3 font-medium">Montant</th>
                 <th className="text-right px-4 py-3 font-medium">Actions</th>
               </tr>
             </thead>
@@ -175,7 +171,7 @@ export function SessionsTable({
                   <td className="px-4 py-3 text-slate-600">
                     {formatDate(s.date)} · {s.startTime}-{s.endTime}
                   </td>
-                  <td className="px-4 py-3 text-slate-600">{typeLabels[s.type] ?? s.type}</td>
+                  <td className="px-4 py-3 text-slate-600">{sessionTypeLabels[s.type] ?? s.type}</td>
                   <td className="px-4 py-3 text-slate-600">
                     {s.instructorName ?? "—"} {s.vehicleLabel ? `/ ${s.vehicleLabel}` : ""}
                   </td>
@@ -187,6 +183,9 @@ export function SessionsTable({
                     >
                       {sessionStatusLabel(s.status)}
                     </span>
+                  </td>
+                  <td className="px-4 py-3 text-right text-slate-700 whitespace-nowrap">
+                    {s.amount > 0 ? formatCurrency(s.amount) : "—"}
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center justify-end gap-1">
@@ -208,7 +207,7 @@ export function SessionsTable({
               ))}
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-4 py-10 text-center text-slate-400">
+                  <td colSpan={7} className="px-4 py-10 text-center text-slate-400">
                     Aucune séance trouvée.
                   </td>
                 </tr>
@@ -256,7 +255,7 @@ export function SessionsTable({
             <div>
               <label className={labelClass}>Type</label>
               <select name="type" defaultValue={editing?.type ?? "CONDUITE"} className={inputClass}>
-                {Object.entries(typeLabels).map(([v, l]) => (
+                {Object.entries(sessionTypeLabels).map(([v, l]) => (
                   <option key={v} value={v}>
                     {l}
                   </option>

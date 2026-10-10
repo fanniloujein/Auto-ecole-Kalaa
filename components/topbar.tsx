@@ -5,7 +5,7 @@ import { Menu } from "lucide-react";
 import { Sidebar } from "@/components/sidebar";
 import { logoutAction } from "@/actions/auth-logout";
 
-export function Topbar({ adminName }: { adminName: string }) {
+export function Topbar({ adminName, schoolName }: { adminName: string; schoolName?: string }) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -44,7 +44,7 @@ export function Topbar({ adminName }: { adminName: string }) {
         <div className="fixed inset-0 z-40 md:hidden">
           <div className="absolute inset-0 bg-black/40" onClick={() => setOpen(false)} />
           <div className="absolute left-0 top-0 h-full">
-            <Sidebar onNavigate={() => setOpen(false)} />
+            <Sidebar onNavigate={() => setOpen(false)} schoolName={schoolName} />
           </div>
         </div>
       )}

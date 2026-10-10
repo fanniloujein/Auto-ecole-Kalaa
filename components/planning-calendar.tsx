@@ -7,6 +7,7 @@ import { Modal } from "@/components/modal";
 import { useToast } from "@/components/toast";
 import { createSession, updateSession, deleteSession } from "@/actions/sessions";
 import { sessionStatusColor, sessionStatusLabel } from "@/lib/utils";
+import { sessionTypeLabels } from "@/lib/labels";
 import type { InstructorListItem, VehicleListItem } from "@/types";
 
 interface PlanningSession {
@@ -46,13 +47,6 @@ const monthNames = [
   "Novembre",
   "Décembre",
 ];
-
-const typeLabels: Record<string, string> = {
-  CONDUITE: "Conduite",
-  CODE: "Code",
-  EXAMEN_BLANC: "Examen blanc",
-  AUTRE: "Autre",
-};
 
 function toKey(d: Date) {
   return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
@@ -354,7 +348,7 @@ export function PlanningCalendar({
             <div>
               <label className={labelClass}>Type</label>
               <select name="type" defaultValue={editing?.type ?? "CONDUITE"} className={inputClass}>
-                {Object.entries(typeLabels).map(([v, l]) => (
+                {Object.entries(sessionTypeLabels).map(([v, l]) => (
                   <option key={v} value={v}>
                     {l}
                   </option>

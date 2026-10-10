@@ -7,7 +7,7 @@ export function PrintButton({ hideBack = false }: { hideBack?: boolean }) {
   const router = useRouter();
 
   return (
-    <div className="max-w-2xl mx-auto mb-4 flex items-center justify-end no-print">
+    <div className="max-w-3xl mx-auto mb-4 flex items-center justify-end no-print">
       {!hideBack && (
         <button
           onClick={() => router.back()}
