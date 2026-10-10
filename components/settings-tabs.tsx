@@ -1,21 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { PackagesPanel } from "@/components/packages-panel";
+import { TariffsPanel } from "@/components/tariffs-panel";
 import { VehiclesPanel } from "@/components/vehicles-panel";
 import { InstructorsPanel } from "@/components/instructors-panel";
 import { GeneralSettingsPanel } from "@/components/general-settings-panel";
 import { cn } from "@/lib/utils";
+import type { Tariffs } from "@/lib/billing";
 
 interface Props {
-  packages: {
-    id: string;
-    name: string;
-    description: string | null;
-    price: number;
-    sessionsCount: number;
-    isActive: boolean;
-  }[];
+  tariffs: Tariffs;
   vehicles: {
     id: string;
     brand: string;
@@ -42,16 +36,16 @@ interface Props {
 }
 
 const tabs = [
-  { id: "packages", label: "📦 Formules & prix" },
-  { id: "vehicles", label: "🚗 Véhicules" },
-  { id: "instructors", label: "👤 Moniteurs" },
-  { id: "general", label: "⚙️ Informations générales" },
+  { id: "tariffs", label: "Tarifs" },
+  { id: "vehicles", label: "Véhicules" },
+  { id: "instructors", label: "Moniteurs" },
+  { id: "general", label: "Informations générales" },
 ] as const;
 
 type TabId = (typeof tabs)[number]["id"];
 
-export function SettingsTabs({ packages, vehicles, instructors, settings }: Props) {
-  const [active, setActive] = useState<TabId>("packages");
+export function SettingsTabs({ tariffs, vehicles, instructors, settings }: Props) {
+  const [active, setActive] = useState<TabId>("tariffs");
 
   return (
     <div className="space-y-5">
@@ -72,7 +66,9 @@ export function SettingsTabs({ packages, vehicles, instructors, settings }: Prop
         ))}
       </div>
 
-      {active === "packages" && <PackagesPanel packages={packages} />}
+      {active === "tariffs" && (
+        <TariffsPanel tariffs={tariffs} currency={settings?.currency ?? "TND"} />
+      )}
       {active === "vehicles" && <VehiclesPanel vehicles={vehicles} />}
       {active === "instructors" && <InstructorsPanel instructors={instructors} />}
       {active === "general" && <GeneralSettingsPanel settings={settings} />}

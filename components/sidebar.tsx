@@ -10,29 +10,41 @@ import {
   CalendarDays,
   Settings,
   Car,
+  GraduationCap,
+  Receipt,
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const navItems = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/dashboard", label: "Tableau de bord", icon: LayoutDashboard },
   { href: "/clients", label: "Clients", icon: Users },
-  { href: "/seances", label: "Séances", icon: CalendarClock },
-  { href: "/paiements", label: "Paiements", icon: Wallet },
   { href: "/planning", label: "Planning", icon: CalendarDays },
+  { href: "/seances", label: "Séances", icon: CalendarClock },
+  { href: "/examens", label: "Examens", icon: GraduationCap },
+  { href: "/paiements", label: "Paiements", icon: Wallet },
+  { href: "/depenses", label: "Dépenses", icon: Receipt },
   { href: "/parametres", label: "Paramètres", icon: Settings },
 ];
 
-export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
+export function Sidebar({
+  onNavigate,
+  schoolName = "Auto-École",
+}: {
+  onNavigate?: () => void;
+  schoolName?: string;
+}) {
   const pathname = usePathname();
 
   return (
     <div className="flex flex-col h-full bg-blue-900 text-white w-64">
       <div className="flex items-center justify-between px-5 h-16 border-b border-blue-800">
-        <div className="flex items-center gap-2">
-          <span className="text-2xl">🚗</span>
-          <div>
-            <p className="font-bold leading-tight">Auto-École</p>
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="h-9 w-9 rounded-lg bg-blue-700 flex items-center justify-center shrink-0">
+            <Car className="h-5 w-5" />
+          </span>
+          <div className="min-w-0">
+            <p className="font-bold leading-tight truncate">{schoolName}</p>
             <p className="text-xs text-blue-300 leading-tight">Espace Admin</p>
           </div>
         </div>
@@ -69,8 +81,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
         })}
       </nav>
 
-      <div className="px-5 py-4 border-t border-blue-800 text-xs text-blue-300 flex items-center gap-2">
-        <Car className="h-3.5 w-3.5" />
+      <div className="px-5 py-4 border-t border-blue-800 text-xs text-blue-300">
         Plateforme de gestion interne
       </div>
     </div>

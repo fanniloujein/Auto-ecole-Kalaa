@@ -3,12 +3,24 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
-import { clientSchema } from "@/lib/validation";
+import { clientSchema, type ClientFormValues } from "@/lib/validation";
 
 async function requireAdmin() {
   const session = await auth();
   if (!session?.user) throw new Error("Non autorisé");
   return session;
+}
+
+/** Frais d'inscription : mis à 0 pour toute inscription non cochée */
+function registrationData(data: ClientFormValues) {
+  return {
+    registeredCode: data.registeredCode,
+    registeredConduite: data.registeredConduite,
+    registeredPark: data.registeredPark,
+    feeInscriptionCode: data.registeredCode ? data.feeInscriptionCode : 0,
+    feeInscriptionConduite: data.registeredConduite ? data.feeInscriptionConduite : 0,
+    feeInscriptionPark: data.registeredPark ? data.feeInscriptionPark : 0,
+  };
 }
 
 export type ActionResult<T = unknown> =
@@ -40,11 +52,7 @@ export async function createClient(input: unknown): Promise<ActionResult> {
         address: data.address || null,
         licenseType: data.licenseType,
         startDate: data.startDate ? new Date(data.startDate) : null,
-        packageId: data.packageId || null,
-        totalSessions: data.totalSessions,
-        doneSessions: data.doneSessions,
-        totalPrice: data.totalPrice,
-        paidAmount: data.paidAmount,
+        ...registrationData(data),
         notes: data.notes || null,
         isActive: data.isActive ?? true,
       },
@@ -86,11 +94,7 @@ export async function updateClient(id: string, input: unknown): Promise<ActionRe
         address: data.address || null,
         licenseType: data.licenseType,
         startDate: data.startDate ? new Date(data.startDate) : null,
-        packageId: data.packageId || null,
-        totalSessions: data.totalSessions,
-        doneSessions: data.doneSessions,
-        totalPrice: data.totalPrice,
-        paidAmount: data.paidAmount,
+        ...registrationData(data),
         notes: data.notes || null,
         isActive: data.isActive ?? true,
       },

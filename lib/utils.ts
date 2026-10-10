@@ -42,26 +42,23 @@ export function normalizePhoneForWhatsapp(phone: string, defaultCountryCode = "2
   return `${defaultCountryCode}${cleaned}`;
 }
 
-export function remainingAmount(totalPrice: number, paidAmount: number) {
-  return Math.max(0, totalPrice - paidAmount);
-}
-
 export type PaymentStatusLabel = "PAYE" | "PARTIEL" | "NON_PAYE";
 
-export function paymentStatus(totalPrice: number, paidAmount: number): PaymentStatusLabel {
+/** Statut de paiement à partir du montant dû et du montant payé */
+export function paymentStatus(totalDue: number, paidAmount: number): PaymentStatusLabel {
+  if (paidAmount >= totalDue) return "PAYE";
   if (paidAmount <= 0) return "NON_PAYE";
-  if (paidAmount >= totalPrice) return "PAYE";
   return "PARTIEL";
 }
 
 export function paymentStatusLabel(status: PaymentStatusLabel) {
   switch (status) {
     case "PAYE":
-      return "Payé";
+      return "À jour";
     case "PARTIEL":
-      return "Partiellement payé";
+      return "Partiel";
     default:
-      return "Non payé";
+      return "Impayé";
   }
 }
 

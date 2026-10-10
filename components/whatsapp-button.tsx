@@ -1,5 +1,6 @@
 "use client";
 
+import { MessageCircle } from "lucide-react";
 import { buildWhatsappUrl, type WhatsappClientData } from "@/lib/whatsapp";
 
 export function WhatsappButton({
@@ -21,7 +22,8 @@ export function WhatsappButton({
       onClick={handleClick}
       className="no-print w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-6 py-3.5 text-base shadow-sm transition-colors"
     >
-      📱 Envoyer la fiche sur WhatsApp
+      <MessageCircle className="h-5 w-5" />
+      Envoyer le point sur WhatsApp
     </button>
   );
 }

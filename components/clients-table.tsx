@@ -8,24 +8,28 @@ import { Modal } from "@/components/modal";
 import { ClientForm } from "@/components/client-form";
 import { useToast } from "@/components/toast";
 import { deleteClient } from "@/actions/clients";
+import { ExamProgressBadges } from "@/components/exam-progress-badges";
 import { formatCurrency, paymentStatus, paymentStatusColor, paymentStatusLabel } from "@/lib/utils";
-import type { ClientListItem, PackageListItem } from "@/types";
+import { licenseTypes } from "@/lib/labels";
+import type { Tariffs } from "@/lib/billing";
+import type { ClientWithAccount } from "@/types";
 
 export function ClientsTable({
   initialClients,
-  packages,
+  tariffs,
 }: {
-  initialClients: ClientListItem[];
-  packages: PackageListItem[];
+  initialClients: ClientWithAccount[];
+  tariffs: Tariffs;
 }) {
   const router = useRouter();
   const { notify } = useToast();
   const [query, setQuery] = useState("");
   const [licenseFilter, setLicenseFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("all");
+  const [balanceFilter, setBalanceFilter] = useState<"all" | "due" | "ok">("all");
   const [modalOpen, setModalOpen] = useState(false);
-  const [editing, setEditing] = useState<ClientListItem | undefined>(undefined);
-  const [deleting, setDeleting] = useState<ClientListItem | null>(null);
+  const [editing, setEditing] = useState<ClientWithAccount | undefined>(undefined);
+  const [deleting, setDeleting] = useState<ClientWithAccount | null>(null);
   const [isPending, startTransition] = useTransition();
 
   const filtered = useMemo(() => {
@@ -40,16 +44,20 @@ export function ClientsTable({
         statusFilter === "all" ||
         (statusFilter === "active" && c.isActive) ||
         (statusFilter === "inactive" && !c.isActive);
-      return matchesQuery && matchesLicense && matchesStatus;
+      const matchesBalance =
+        balanceFilter === "all" ||
+        (balanceFilter === "due" && c.balance > 0) ||
+        (balanceFilter === "ok" && c.balance <= 0);
+      return matchesQuery && matchesLicense && matchesStatus && matchesBalance;
     });
-  }, [initialClients, query, licenseFilter, statusFilter]);
+  }, [initialClients, query, licenseFilter, statusFilter, balanceFilter]);
 
   function openCreate() {
     setEditing(undefined);
     setModalOpen(true);
   }
 
-  function openEdit(c: ClientListItem) {
+  function openEdit(c: ClientWithAccount) {
     setEditing(c);
     setModalOpen(true);
   }
@@ -92,7 +100,7 @@ export function ClientsTable({
             className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600"
           >
             <option value="">Tous les permis</option>
-            {["A", "A1", "B", "C", "D", "BE", "CE"].map((t) => (
+            {licenseTypes.map((t) => (
               <option key={t} value={t}>
                 Permis {t}
               </option>
@@ -106,6 +114,15 @@ export function ClientsTable({
             <option value="all">Tous les statuts</option>
             <option value="active">Actifs</option>
             <option value="inactive">Inactifs</option>
+          </select>
+          <select
+            value={balanceFilter}
+            onChange={(e) => setBalanceFilter(e.target.value as typeof balanceFilter)}
+            className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600"
+          >
+            <option value="all">Toutes situations</option>
+            <option value="due">Reste à payer</option>
+            <option value="ok">À jour</option>
           </select>
         </div>
         <button
@@ -123,16 +140,22 @@ export function ClientsTable({
             <thead className="bg-slate-50 text-slate-500 text-xs uppercase">
               <tr>
                 <th className="text-left px-4 py-3 font-medium">Client</th>
-                <th className="text-left px-4 py-3 font-medium">Permis</th>
-                <th className="text-left px-4 py-3 font-medium">Séances</th>
-                <th className="text-left px-4 py-3 font-medium">Paiement</th>
+                <th className="text-left px-4 py-3 font-medium">Inscriptions</th>
+                <th className="text-left px-4 py-3 font-medium">Examens</th>
+                <th className="text-left px-4 py-3 font-medium">Payé</th>
+                <th className="text-left px-4 py-3 font-medium">Reste</th>
                 <th className="text-left px-4 py-3 font-medium">Statut</th>
                 <th className="text-right px-4 py-3 font-medium">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {filtered.map((c) => {
-                const status = paymentStatus(c.totalPrice, c.paidAmount);
+                const status = paymentStatus(c.totalDue, c.totalPaid);
+                const inscriptions = [
+                  c.registeredCode && "Code",
+                  c.registeredPark && "Park",
+                  c.registeredConduite && "Conduite",
+                ].filter(Boolean);
                 return (
                   <tr key={c.id} className="hover:bg-slate-50">
                     <td className="px-4 py-3">
@@ -142,23 +165,39 @@ export function ClientsTable({
                           {c.lastName.charAt(0)}
                         </div>
                         <div>
-                          <p className="font-medium text-slate-800 group-hover:text-blue-700">
+                          <p className="font-medium text-slate-800 group-hover:text-blue-700 whitespace-nowrap">
                             {c.firstName} {c.lastName}
                           </p>
-                          <p className="text-xs text-slate-400">{c.phone}</p>
+                          <p className="text-xs text-slate-400 whitespace-nowrap">
+                            Permis {c.licenseType} · {c.phone}
+                          </p>
                         </div>
                       </Link>
                     </td>
-                    <td className="px-4 py-3 text-slate-600">{c.licenseType}</td>
                     <td className="px-4 py-3 text-slate-600">
-                      {c.doneSessions}/{c.totalSessions}
+                      {inscriptions.length > 0 ? inscriptions.join(", ") : "—"}
                     </td>
-                    <td className="px-4 py-3 text-slate-600">
-                      {formatCurrency(c.paidAmount)} / {formatCurrency(c.totalPrice)}
+                    <td className="px-4 py-3">
+                      <ExamProgressBadges progress={c.examProgress} />
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <p className="text-slate-700">{formatCurrency(c.totalPaid)}</p>
+                      <p className="text-xs text-slate-400">sur {formatCurrency(c.totalDue)}</p>
+                    </td>
+                    <td
+                      className={`px-4 py-3 font-medium whitespace-nowrap ${
+                        c.balance > 0 ? "text-rose-600" : "text-emerald-600"
+                      }`}
+                    >
+                      {c.balance > 0
+                        ? formatCurrency(c.balance)
+                        : c.balance < 0
+                          ? `Avance ${formatCurrency(-c.balance)}`
+                          : "—"}
                     </td>
                     <td className="px-4 py-3">
                       <span
-                        className={`text-xs font-medium px-2 py-1 rounded-full border ${paymentStatusColor(
+                        className={`text-xs font-medium px-2 py-1 rounded-full border whitespace-nowrap ${paymentStatusColor(
                           status
                         )}`}
                       >
@@ -195,7 +234,7 @@ export function ClientsTable({
               })}
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-4 py-10 text-center text-slate-400">
+                  <td colSpan={7} className="px-4 py-10 text-center text-slate-400">
                     Aucun client trouvé.
                   </td>
                 </tr>
@@ -211,7 +250,7 @@ export function ClientsTable({
         title={editing ? "Modifier le client" : "Ajouter un client"}
         size="lg"
       >
-        <ClientForm client={editing} packages={packages} onSuccess={handleSuccess} />
+        <ClientForm client={editing} tariffs={tariffs} onSuccess={handleSuccess} />
       </Modal>
 
       <Modal open={!!deleting} onClose={() => setDeleting(null)} title="Confirmer la suppression" size="sm">
@@ -220,7 +259,7 @@ export function ClientsTable({
           <span className="font-semibold">
             {deleting?.firstName} {deleting?.lastName}
           </span>
-          ? Cette action est irréversible et supprimera également ses séances et paiements.
+          ? Cette action est irréversible et supprimera également ses séances, examens et paiements.
         </p>
         <div className="flex justify-end gap-2">
           <button

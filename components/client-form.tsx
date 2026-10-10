@@ -3,33 +3,52 @@
 import { useState, useTransition } from "react";
 import { createClient, updateClient } from "@/actions/clients";
 import { useToast } from "@/components/toast";
-import type { ClientListItem, PackageListItem } from "@/types";
+import type { ClientListItem } from "@/types";
+import type { Tariffs } from "@/lib/billing";
+import { licenseTypes } from "@/lib/labels";
+import { formatCurrency } from "@/lib/utils";
 import { Loader2 } from "lucide-react";
-
-const licenseTypes = ["A", "A1", "B", "C", "D", "BE", "CE"];
 
 function toInputDate(v?: string | null) {
   if (!v) return "";
   return v.slice(0, 10);
 }
 
+const registrations = [
+  { key: "Code", label: "Inscription code", tariff: "feeInscriptionCode" },
+  { key: "Conduite", label: "Inscription conduite", tariff: "feeInscriptionConduite" },
+  { key: "Park", label: "Inscription park", tariff: "feeInscriptionPark" },
+] as const;
+
 export function ClientForm({
   client,
-  packages,
+  tariffs,
   onSuccess,
 }: {
   client?: ClientListItem;
-  packages: PackageListItem[];
+  tariffs: Tariffs;
   onSuccess: () => void;
 }) {
   const { notify } = useToast();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
-  const [selectedPackage, setSelectedPackage] = useState(client?.packageId ?? "");
+  const [checked, setChecked] = useState({
+    Code: client?.registeredCode ?? false,
+    Conduite: client?.registeredConduite ?? false,
+    Park: client?.registeredPark ?? false,
+  });
+  const [fees, setFees] = useState({
+    Code: client?.registeredCode ? client.feeInscriptionCode : tariffs.feeInscriptionCode,
+    Conduite: client?.registeredConduite
+      ? client.feeInscriptionConduite
+      : tariffs.feeInscriptionConduite,
+    Park: client?.registeredPark ? client.feeInscriptionPark : tariffs.feeInscriptionPark,
+  });
 
-  function handlePackageChange(id: string) {
-    setSelectedPackage(id);
-  }
+  const totalInscription = registrations.reduce(
+    (sum, r) => sum + (checked[r.key] ? Number(fees[r.key]) || 0 : 0),
+    0
+  );
 
   function handleSubmit(formData: FormData) {
     setError(null);
@@ -43,11 +62,12 @@ export function ClientForm({
       address: formData.get("address") || null,
       licenseType: formData.get("licenseType"),
       startDate: formData.get("startDate") || null,
-      packageId: formData.get("packageId") || null,
-      totalSessions: formData.get("totalSessions"),
-      doneSessions: formData.get("doneSessions"),
-      totalPrice: formData.get("totalPrice"),
-      paidAmount: formData.get("paidAmount"),
+      registeredCode: checked.Code,
+      registeredConduite: checked.Conduite,
+      registeredPark: checked.Park,
+      feeInscriptionCode: fees.Code,
+      feeInscriptionConduite: fees.Conduite,
+      feeInscriptionPark: fees.Park,
       notes: formData.get("notes") || null,
       isActive: formData.get("isActive") === "on",
     };
@@ -68,7 +88,7 @@ export function ClientForm({
   }
 
   const inputClass =
-    "w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-blue-600";
+    "w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-blue-600 disabled:bg-slate-50 disabled:text-slate-400";
   const labelClass = "block text-xs font-medium text-slate-600 mb-1";
 
   return (
@@ -131,7 +151,7 @@ export function ClientForm({
             >
               {licenseTypes.map((t) => (
                 <option key={t} value={t}>
-                  {t}
+                  Permis {t}
                 </option>
               ))}
             </select>
@@ -145,71 +165,46 @@ export function ClientForm({
               className={inputClass}
             />
           </div>
-          <div className="sm:col-span-2">
-            <label className={labelClass}>Formule</label>
-            <select
-              name="packageId"
-              value={selectedPackage}
-              onChange={(e) => handlePackageChange(e.target.value)}
-              className={inputClass}
-            >
-              <option value="">— Aucune —</option>
-              {packages.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name} ({p.price} — {p.sessionsCount} séances)
-                </option>
-              ))}
-            </select>
-          </div>
         </div>
       </fieldset>
 
       <fieldset className="space-y-3">
-        <legend className="text-sm font-semibold text-slate-700 mb-1">Séances &amp; paiement</legend>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <div>
-            <label className={labelClass}>Total séances</label>
-            <input
-              type="number"
-              min={0}
-              name="totalSessions"
-              defaultValue={client?.totalSessions ?? 0}
-              className={inputClass}
-            />
-          </div>
-          <div>
-            <label className={labelClass}>Effectuées</label>
-            <input
-              type="number"
-              min={0}
-              name="doneSessions"
-              defaultValue={client?.doneSessions ?? 0}
-              className={inputClass}
-            />
-          </div>
-          <div>
-            <label className={labelClass}>Prix total</label>
-            <input
-              type="number"
-              min={0}
-              step="0.01"
-              name="totalPrice"
-              defaultValue={client?.totalPrice ?? 0}
-              className={inputClass}
-            />
-          </div>
-          <div>
-            <label className={labelClass}>Montant payé</label>
-            <input
-              type="number"
-              min={0}
-              step="0.01"
-              name="paidAmount"
-              defaultValue={client?.paidAmount ?? 0}
-              className={inputClass}
-            />
+        <legend className="text-sm font-semibold text-slate-700 mb-1">Inscriptions</legend>
+        <div className="rounded-lg border border-slate-200 divide-y divide-slate-100">
+          {registrations.map((r) => (
+            <div key={r.key} className="flex items-center justify-between gap-3 px-3 py-2.5">
+              <label className="flex items-center gap-2 text-sm text-slate-700">
+                <input
+                  type="checkbox"
+                  checked={checked[r.key]}
+                  onChange={(e) => setChecked({ ...checked, [r.key]: e.target.checked })}
+                  className="rounded border-slate-300"
+                />
+                {r.label}
+              </label>
+              <div className="w-32">
+                <input
+                  type="number"
+                  min={0}
+                  step="0.001"
+                  aria-label={`Montant ${r.label}`}
+                  disabled={!checked[r.key]}
+                  value={fees[r.key]}
+                  onChange={(e) => setFees({ ...fees, [r.key]: Number(e.target.value) })}
+                  className={`${inputClass} text-right`}
+                />
+              </div>
+            </div>
+          ))}
+          <div className="flex items-center justify-between px-3 py-2.5 bg-slate-50 text-sm">
+            <span className="font-medium text-slate-600">Total frais d&apos;inscription</span>
+            <span className="font-semibold text-slate-900">{formatCurrency(totalInscription)}</span>
           </div>
         </div>
+        <p className="text-xs text-slate-500">
+          Les heures sont facturées selon les tarifs en vigueur : conduite et park{" "}
+          {formatCurrency(tariffs.priceHourConduite)} / h, code {formatCurrency(tariffs.priceHourCode)} / h.
+        </p>
       </fieldset>
 
       <fieldset className="space-y-3">

@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { SessionsTable } from "@/components/sessions-table";
+import { sessionAmount } from "@/lib/billing";
 
 export default async function SeancesPage() {
   const [sessions, clients, instructors, vehicles] = await Promise.all([
@@ -23,7 +24,7 @@ export default async function SeancesPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-slate-900">Séances</h1>
-        <p className="text-slate-500 text-sm mt-1">Toutes les séances de conduite</p>
+        <p className="text-slate-500 text-sm mt-1">Séances de conduite, de park et de code — seules les séances effectuées sont facturées</p>
       </div>
 
       <SessionsTable
@@ -37,6 +38,7 @@ export default async function SeancesPage() {
           type: s.type,
           status: s.status,
           notes: s.notes,
+          amount: sessionAmount(s),
           instructorId: s.instructorId,
           instructorName: s.instructor ? `${s.instructor.firstName} ${s.instructor.lastName}` : null,
           vehicleId: s.vehicleId,

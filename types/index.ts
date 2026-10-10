@@ -10,25 +10,24 @@ export interface ClientListItem {
   licenseType: string;
   registrationDate: string;
   startDate: string | null;
-  totalSessions: number;
-  doneSessions: number;
-  totalPrice: number;
-  paidAmount: number;
   notes: string | null;
   isActive: boolean;
-  packageId: string | null;
-  packageName: string | null;
+  registeredCode: boolean;
+  registeredConduite: boolean;
+  registeredPark: boolean;
+  feeInscriptionCode: number;
+  feeInscriptionConduite: number;
+  feeInscriptionPark: number;
   createdAt: string;
   updatedAt: string;
 }
 
-export interface PackageListItem {
-  id: string;
-  name: string;
-  description: string | null;
-  price: number;
-  sessionsCount: number;
-  isActive: boolean;
+/** Client avec son compte calculé (pour les listes) */
+export interface ClientWithAccount extends ClientListItem {
+  totalDue: number;
+  totalPaid: number;
+  balance: number;
+  examProgress: { type: string; status: string; failures: number }[];
 }
 
 export interface VehicleListItem {
