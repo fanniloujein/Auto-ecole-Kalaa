@@ -25,6 +25,15 @@ const groups = [
       { name: "feeInscriptionPark", label: "Inscription park" },
     ],
   },
+  {
+    title: "Repassage d'examen",
+    hint: "Facturés au client qui repasse un examen après un échec ou une absence. Proposés automatiquement lors de la programmation du nouveau passage (compte Examens).",
+    fields: [
+      { name: "feeRetakeCode", label: "Repassage examen du code" },
+      { name: "feeRetakePark", label: "Repassage examen du park" },
+      { name: "feeRetakeConduite", label: "Repassage examen de conduite" },
+    ],
+  },
 ] as const;
 
 export function TariffsPanel({ tariffs, currency }: { tariffs: Tariffs; currency: string }) {

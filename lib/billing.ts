@@ -11,6 +11,9 @@ export interface Tariffs {
   feeInscriptionCode: number;
   feeInscriptionConduite: number;
   feeInscriptionPark: number;
+  feeRetakeCode: number;
+  feeRetakePark: number;
+  feeRetakeConduite: number;
 }
 
 export const defaultTariffs: Tariffs = {
@@ -19,6 +22,9 @@ export const defaultTariffs: Tariffs = {
   feeInscriptionCode: 100,
   feeInscriptionConduite: 200,
   feeInscriptionPark: 200,
+  feeRetakeCode: 50,
+  feeRetakePark: 100,
+  feeRetakeConduite: 100,
 };
 
 /** Extrait les tarifs des paramètres (valeurs par défaut si aucun paramètre enregistré) */
@@ -30,7 +36,40 @@ export function tariffsFrom(settings: Partial<Tariffs> | null | undefined): Tari
     feeInscriptionCode: pick("feeInscriptionCode"),
     feeInscriptionConduite: pick("feeInscriptionConduite"),
     feeInscriptionPark: pick("feeInscriptionPark"),
+    feeRetakeCode: pick("feeRetakeCode"),
+    feeRetakePark: pick("feeRetakePark"),
+    feeRetakeConduite: pick("feeRetakeConduite"),
   };
+}
+
+/** Frais de repassage d'un examen (code, park ou conduite) */
+export function retakeFeeFor(examType: string, tariffs: Tariffs) {
+  switch (examType) {
+    case "CODE":
+      return tariffs.feeRetakeCode;
+    case "PARK":
+      return tariffs.feeRetakePark;
+    case "CONDUITE":
+      return tariffs.feeRetakeConduite;
+    default:
+      return 0;
+  }
+}
+
+/** Un nouveau passage est un repassage si le client a déjà échoué (ou été absent) à cet examen */
+export function isRetake(
+  exams: { id?: string; clientId: string; type: string; result: string }[],
+  clientId: string,
+  type: string,
+  excludeId?: string
+) {
+  return exams.some(
+    (e) =>
+      e.clientId === clientId &&
+      e.type === type &&
+      e.id !== excludeId &&
+      (e.result === "ECHOUE" || e.result === "ABSENT")
+  );
 }
 
 /** Tarif horaire applicable à un type de séance (le park est facturé au tarif conduite) */

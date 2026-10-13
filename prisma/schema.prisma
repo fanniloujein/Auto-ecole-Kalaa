@@ -257,6 +257,10 @@ model Settings {
   feeInscriptionCode     Float @default(100)
   feeInscriptionConduite Float @default(200)
   feeInscriptionPark     Float @default(200)
+  // Frais de repassage d'un examen après un échec ou une absence
+  feeRetakeCode          Float @default(50)
+  feeRetakePark          Float @default(100)
+  feeRetakeConduite      Float @default(100)
 
   updatedAt DateTime @updatedAt
 

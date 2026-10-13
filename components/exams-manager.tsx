@@ -7,6 +7,7 @@ import { Modal } from "@/components/modal";
 import { useToast } from "@/components/toast";
 import { createExam, updateExam, deleteExam } from "@/actions/exams";
 import { cn, formatCurrency, formatDate } from "@/lib/utils";
+import { isRetake } from "@/lib/billing";
 import {
   examResultColor,
   examResultLabels,
@@ -47,10 +48,13 @@ export function ExamsManager({
   exams,
   clients,
   clientId,
+  retakeFees,
 }: {
   exams: ExamRow[];
   clients?: ClientOption[];
   clientId?: string;
+  /** Frais de repassage par type d'examen (CODE, PARK, CONDUITE) */
+  retakeFees: Record<string, number>;
 }) {
   const router = useRouter();
   const { notify } = useToast();
@@ -59,7 +63,10 @@ export function ExamsManager({
   const [resultFilter, setResultFilter] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<ExamRow | undefined>(undefined);
-  const [preset, setPreset] = useState<{ clientId?: string; type?: string }>({});
+  const [formClient, setFormClient] = useState("");
+  const [formType, setFormType] = useState("CODE");
+  const [fee, setFee] = useState<number | string>(0);
+  const [feeTouched, setFeeTouched] = useState(false);
   const [deleting, setDeleting] = useState<ExamRow | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -75,18 +82,39 @@ export function ExamsManager({
     );
   }, [exams, query, typeFilter, resultFilter]);
 
+  /** Frais proposés : frais de repassage si le client a déjà échoué à cet examen */
+  function defaultFee(forClient: string, type: string) {
+    return forClient && isRetake(exams, forClient, type) ? retakeFees[type] ?? 0 : 0;
+  }
+
+  const retake = !editing && !!formClient && isRetake(exams, formClient, formType);
+
   function openCreate(p: { clientId?: string; type?: string } = {}) {
+    const c = clientId ?? p.clientId ?? "";
+    const t = p.type ?? "CODE";
     setEditing(undefined);
-    setPreset(p);
+    setFormClient(c);
+    setFormType(t);
+    setFee(defaultFee(c, t));
+    setFeeTouched(false);
     setError(null);
     setModalOpen(true);
   }
 
   function openEdit(e: ExamRow) {
     setEditing(e);
-    setPreset({});
+    setFormClient(e.clientId);
+    setFormType(e.type);
+    setFee(e.fee);
+    setFeeTouched(true);
     setError(null);
     setModalOpen(true);
+  }
+
+  function changeClientOrType(c: string, t: string) {
+    setFormClient(c);
+    setFormType(t);
+    if (!editing && !feeTouched) setFee(defaultFee(c, t));
   }
 
   function handleSubmit(formData: FormData) {
@@ -97,7 +125,7 @@ export function ExamsManager({
       date: formData.get("date"),
       time: formData.get("time") || null,
       result: formData.get("result"),
-      fee: formData.get("fee") || 0,
+      fee: fee === "" ? 0 : fee,
       location: formData.get("location") || null,
       notes: formData.get("notes") || null,
     };
@@ -316,7 +344,8 @@ export function ExamsManager({
               <select
                 name="clientId"
                 required
-                defaultValue={editing?.clientId ?? preset.clientId ?? ""}
+                value={formClient}
+                onChange={(e) => changeClientOrType(e.target.value, formType)}
                 className={inputClass}
               >
                 <option value="" disabled>
@@ -335,7 +364,8 @@ export function ExamsManager({
               <label className={labelClass}>Examen *</label>
               <select
                 name="type"
-                defaultValue={editing?.type ?? preset.type ?? "CODE"}
+                value={formType}
+                onChange={(e) => changeClientOrType(formClient, e.target.value)}
                 className={inputClass}
               >
                 {examTypeOrder.map((t) => (
@@ -380,10 +410,21 @@ export function ExamsManager({
                 min={0}
                 step="0.001"
                 name="fee"
-                defaultValue={editing?.fee ?? 0}
+                value={fee}
+                onChange={(e) => {
+                  setFee(e.target.value);
+                  setFeeTouched(true);
+                }}
                 className={inputClass}
               />
             </div>
+            {retake && (
+              <div className="col-span-2 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-xs px-3 py-2">
+                Repassage : le client a déjà échoué à cet examen. Frais de repassage proposés :{" "}
+                <span className="font-semibold">{formatCurrency(retakeFees[formType] ?? 0)}</span>{" "}
+                (ajoutés au compte Examens du client).
+              </div>
+            )}
             <div className="col-span-2">
               <label className={labelClass}>Notes</label>
               <textarea name="notes" rows={2} defaultValue={editing?.notes ?? ""} className={inputClass} />

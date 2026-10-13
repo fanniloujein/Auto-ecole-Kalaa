@@ -133,6 +133,9 @@ export const tariffsSchema = z.object({
   feeInscriptionCode: z.coerce.number().min(0, "Montant invalide"),
   feeInscriptionConduite: z.coerce.number().min(0, "Montant invalide"),
   feeInscriptionPark: z.coerce.number().min(0, "Montant invalide"),
+  feeRetakeCode: z.coerce.number().min(0, "Montant invalide"),
+  feeRetakePark: z.coerce.number().min(0, "Montant invalide"),
+  feeRetakeConduite: z.coerce.number().min(0, "Montant invalide"),
 });
 
 export type SettingsFormValues = z.infer<typeof settingsSchema>;
