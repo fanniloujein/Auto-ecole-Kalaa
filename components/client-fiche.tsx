@@ -3,7 +3,7 @@ import { formatCurrency, formatDate } from "@/lib/utils";
 import {
   examResultLabels,
   examTypeLabels,
-  paymentCategoryLabels,
+  paymentLabel,
   paymentMethodLabels,
   sessionTypeLabels,
 } from "@/lib/labels";
@@ -164,7 +164,7 @@ export function ClientFiche({ dossier, school }: { dossier: Dossier; school: Sch
               {client.payments.map((p: Dossier["client"]["payments"][number]) => (
                 <tr key={p.id}>
                   <td className="py-1.5">{formatDate(p.date)}</td>
-                  <td className="py-1.5">{paymentCategoryLabels[p.category]}</td>
+                  <td className="py-1.5">{paymentLabel(p.category, p.detail)}</td>
                   <td className="py-1.5">{paymentMethodLabels[p.method]}</td>
                   <td className="py-1.5 text-right font-medium">{formatCurrency(p.amount)}</td>
                 </tr>

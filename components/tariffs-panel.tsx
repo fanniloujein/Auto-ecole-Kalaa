@@ -27,7 +27,7 @@ const groups = [
   },
   {
     title: "Repassage d'examen",
-    hint: "Ajoutés automatiquement au compte Examens du client dès qu'un examen est marqué « Échoué » ou « Absent ».",
+    hint: "Ajoutés automatiquement au compte « Repassage d'examen » du client dès qu'un examen est marqué « Échoué » ou « Absent ».",
     fields: [
       { name: "feeRetakeCode", label: "Repassage examen du code" },
       { name: "feeRetakePark", label: "Repassage examen du park" },

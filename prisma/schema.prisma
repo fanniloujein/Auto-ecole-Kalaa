@@ -123,12 +123,20 @@ enum PaymentMethod {
   AUTRE
 }
 
-/// Compte auquel un paiement client est affecté
+/// Compte auquel un paiement client est affecté (EXAMEN = repassage d'examen)
 enum PaymentCategory {
   INSCRIPTION
-  CONDUITE
   CODE
+  CONDUITE
+  PARK
   EXAMEN
+}
+
+/// Précision d'un paiement d'inscription ou de repassage : code, conduite ou park
+enum PaymentDetail {
+  CODE
+  CONDUITE
+  PARK
 }
 
 model Payment {
@@ -138,6 +146,8 @@ model Payment {
   amount    Float
   date      DateTime        @default(now())
   category  PaymentCategory @default(CONDUITE)
+  /// Pour une inscription ou un repassage : code, conduite ou park
+  detail    PaymentDetail?
   method    PaymentMethod   @default(ESPECES)
   reference String?
   notes     String?

@@ -24,7 +24,7 @@ export default async function PaiementsPage() {
       <div>
         <h1 className="text-2xl font-bold text-slate-900">Paiements</h1>
         <p className="text-slate-500 text-sm mt-1">
-          Encaissements des clients, séparés par compte : inscription, conduite, code et examens
+          Encaissements des clients, séparés par compte : inscription, code, conduite, park et repassage d&apos;examen
         </p>
       </div>
 
@@ -36,6 +36,7 @@ export default async function PaiementsPage() {
           amount: p.amount,
           date: p.date.toISOString(),
           category: p.category,
+          detail: p.detail,
           method: p.method,
           reference: p.reference,
         }))}
@@ -44,7 +45,7 @@ export default async function PaiementsPage() {
             id: client.id,
             firstName: client.firstName,
             lastName: client.lastName,
-            lines: account.lines,
+            account: { lines: account.lines, details: account.details },
           }))
           .sort((a, b) => a.firstName.localeCompare(b.firstName))}
         summary={summary}
