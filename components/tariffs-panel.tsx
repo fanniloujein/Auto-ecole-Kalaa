@@ -25,6 +25,15 @@ const groups = [
       { name: "feeInscriptionPark", label: "Inscription park" },
     ],
   },
+  {
+    title: "Repassage d'examen",
+    hint: "Ajoutés automatiquement au compte Examens du client dès qu'un examen est marqué « Échoué » ou « Absent ».",
+    fields: [
+      { name: "feeRetakeCode", label: "Repassage examen du code" },
+      { name: "feeRetakePark", label: "Repassage examen du park" },
+      { name: "feeRetakeConduite", label: "Repassage examen de conduite" },
+    ],
+  },
 ] as const;
 
 export function TariffsPanel({ tariffs, currency }: { tariffs: Tariffs; currency: string }) {

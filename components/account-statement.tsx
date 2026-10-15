@@ -16,7 +16,7 @@ export function AccountStatement({ account }: { account: ClientAccount }) {
       account.hours.park > 0 ? ` (dont park ${formatHours(account.hours.park)})` : ""
     }`,
     CODE: `${formatHours(account.hours.code)} effectuées`,
-    EXAMEN: "Frais d'examen",
+    EXAMEN: "Frais d'examen et de repassage",
   };
 
   return (

@@ -25,9 +25,12 @@ Plateforme interne complète pour la gestion d'une auto-école : clients, inscri
   | Inscription code | 100 TND |
   | Inscription conduite | 200 TND |
   | Inscription park | 200 TND |
+  | Repassage examen du code (après échec ou absence) | 50 TND |
+  | Repassage examen du park | 100 TND |
+  | Repassage examen de conduite | 100 TND |
 
   Seules les séances **effectuées** sont facturées, au prorata de leur durée (1 h 30 de conduite = 42 TND). Le tarif est figé sur chaque séance et chaque inscription : un changement de tarif ne modifie pas l'historique.
-- **Examens** (code, park, conduite) : résultats *Programmé / Réussi / Échoué / Absent*, **nombre de passages illimité** (en cas d'échec, on programme un nouveau passage), frais d'examen optionnels, taux de réussite par examen
+- **Examens** (code, park, conduite) : résultats *Programmé / Réussi / Échoué / Absent*, **nombre de passages illimité** (en cas d'échec, on programme un nouveau passage), **frais de repassage ajoutés automatiquement** dès qu'un examen est marqué « Échoué » ou « Absent » (compte Examens), saisie du résultat en un clic (boutons *Réussi* / *Échoué*), taux de réussite par examen
 - **Paiements séparés par compte** : inscription, conduite, code, examens — avec, pour chaque client et chaque compte, le montant dû, payé et le reste (ou l'avance)
 - **Dépenses / sorties d'argent** : carburant, entretien, assurance, salaires, loyer, factures, frais d'examen, taxes, fournitures... avec filtres par mois et répartition par catégorie
 - Séances (calendrier + liste, statuts : prévue / effectuée / annulée / absence) et planning mensuel
@@ -121,6 +124,17 @@ npm start
    ```
 
 ---
+
+## 6 bis. Déploiement sur Netlify
+
+Le fichier `netlify.toml` est déjà prêt : à chaque déploiement, Netlify applique les migrations (`prisma migrate deploy`) puis compile l'application.
+
+1. Sur [app.netlify.com](https://app.netlify.com) : **Add new site → Import an existing project → GitHub**, choisissez ce dépôt et la branche `main`.
+2. Dans **Site configuration → Environment variables**, ajoutez :
+   - `DATABASE_URL` : URL de connexion PostgreSQL (Supabase : URL du *pooler*, port 6543, avec `?pgbouncer=true`)
+   - `DIRECT_URL` : URL de connexion directe (Supabase : port 5432) — utilisée pour les migrations
+   - `NEXTAUTH_SECRET` : une longue chaîne aléatoire (`openssl rand -base64 32`)
+3. Lancez le déploiement (**Deploys → Trigger deploy**). Les mises à jour suivantes se déploient automatiquement à chaque modification de la branche `main`.
 
 ## 7. Créer votre propre compte admin (production)
 

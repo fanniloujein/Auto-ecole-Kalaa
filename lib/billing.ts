@@ -11,6 +11,9 @@ export interface Tariffs {
   feeInscriptionCode: number;
   feeInscriptionConduite: number;
   feeInscriptionPark: number;
+  feeRetakeCode: number;
+  feeRetakePark: number;
+  feeRetakeConduite: number;
 }
 
 export const defaultTariffs: Tariffs = {
@@ -19,6 +22,9 @@ export const defaultTariffs: Tariffs = {
   feeInscriptionCode: 100,
   feeInscriptionConduite: 200,
   feeInscriptionPark: 200,
+  feeRetakeCode: 50,
+  feeRetakePark: 100,
+  feeRetakeConduite: 100,
 };
 
 /** Extrait les tarifs des paramètres (valeurs par défaut si aucun paramètre enregistré) */
@@ -30,7 +36,29 @@ export function tariffsFrom(settings: Partial<Tariffs> | null | undefined): Tari
     feeInscriptionCode: pick("feeInscriptionCode"),
     feeInscriptionConduite: pick("feeInscriptionConduite"),
     feeInscriptionPark: pick("feeInscriptionPark"),
+    feeRetakeCode: pick("feeRetakeCode"),
+    feeRetakePark: pick("feeRetakePark"),
+    feeRetakeConduite: pick("feeRetakeConduite"),
   };
+}
+
+/** Frais de repassage d'un examen (code, park ou conduite) */
+export function retakeFeeFor(examType: string, tariffs: Tariffs) {
+  switch (examType) {
+    case "CODE":
+      return tariffs.feeRetakeCode;
+    case "PARK":
+      return tariffs.feeRetakePark;
+    case "CONDUITE":
+      return tariffs.feeRetakeConduite;
+    default:
+      return 0;
+  }
+}
+
+/** Un examen échoué ou manqué doit être repassé (et donne lieu à des frais de repassage) */
+export function isFailedResult(result: string) {
+  return result === "ECHOUE" || result === "ABSENT";
 }
 
 /** Tarif horaire applicable à un type de séance (le park est facturé au tarif conduite) */
@@ -101,6 +129,7 @@ export interface BillingExam {
   type: string;
   result: string;
   fee: number;
+  retakeFee: number;
   date: Date | string;
 }
 
@@ -145,7 +174,7 @@ export function computeClientAccount(
     if (cat) due[cat] += h * s.hourlyRate;
   }
 
-  for (const e of exams) due.EXAMEN += e.fee;
+  for (const e of exams) due.EXAMEN += e.fee + e.retakeFee;
 
   for (const p of payments) {
     if (p.category in paid) paid[p.category as PaymentCategoryKey] += p.amount;

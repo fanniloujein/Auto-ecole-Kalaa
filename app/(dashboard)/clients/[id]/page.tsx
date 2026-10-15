@@ -3,7 +3,8 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Phone, MapPin, IdCard, Wallet, BookOpen, Clock, FileText } from "lucide-react";
 import { formatCurrency, formatDate, paymentStatus, paymentStatusColor, paymentStatusLabel } from "@/lib/utils";
-import { formatHours, sessionAmount, tariffsFrom } from "@/lib/billing";
+import { formatHours, retakeFeeFor, sessionAmount, tariffsFrom } from "@/lib/billing";
+import { examTypeOrder } from "@/lib/labels";
 import { getClientDossier } from "@/lib/accounts";
 import { WhatsappButton } from "@/components/whatsapp-button";
 import { CopyFicheLinkButton } from "@/components/copy-fiche-link-button";
@@ -33,6 +34,8 @@ export default async function ClientDetailPage({
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { sessions, payments, exams, ...clientFields } = client;
+  const tariffs = tariffsFrom(settings);
+  const retakeFees = Object.fromEntries(examTypeOrder.map((t) => [t, retakeFeeFor(t, tariffs)]));
   const status = paymentStatus(account.totalDue, account.totalPaid);
   const clientName = `${client.firstName} ${client.lastName}`;
   const inscriptions = [
@@ -56,7 +59,7 @@ export default async function ClientDetailPage({
         </Link>
         <div className="flex flex-wrap gap-2">
           <EditClientButton
-            tariffs={tariffsFrom(settings)}
+            tariffs={tariffs}
             client={{
               ...clientFields,
               birthDate: client.birthDate?.toISOString() ?? null,
@@ -227,6 +230,7 @@ export default async function ClientDetailPage({
 
       <ExamsManager
         clientId={client.id}
+        retakeFees={retakeFees}
         exams={client.exams.map((e: ExamRecord) => ({
           id: e.id,
           clientId: e.clientId,
@@ -236,6 +240,7 @@ export default async function ClientDetailPage({
           time: e.time,
           result: e.result,
           fee: e.fee,
+          retakeFee: e.retakeFee,
           location: e.location,
           notes: e.notes,
           attempt: attempts.get(e.id) ?? 1,

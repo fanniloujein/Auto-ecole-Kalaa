@@ -13,7 +13,7 @@ const billingInclude = {
     select: { type: true, status: true, startTime: true, endTime: true, hourlyRate: true },
   },
   payments: { select: { category: true, amount: true } },
-  exams: { select: { type: true, result: true, fee: true, date: true } },
+  exams: { select: { type: true, result: true, fee: true, retakeFee: true, date: true } },
 };
 
 /** Charge tous les clients avec leur compte calculé et leur avancement aux examens */

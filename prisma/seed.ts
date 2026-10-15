@@ -111,7 +111,7 @@ async function seedDemoData(vehicleIds: string[], instructorIds: string[]) {
     [0, -14, "CODE", "REUSSI", 0],
     [0, 6, "PARK", "PROGRAMME", 0],
     [1, -30, "CODE", "ECHOUE", 0],
-    [1, -21, "CODE", "REUSSI", 30],
+    [1, -21, "CODE", "REUSSI", 0],
     [1, -9, "PARK", "REUSSI", 0],
     [1, 10, "CONDUITE", "PROGRAMME", 0],
     [2, 4, "CODE", "PROGRAMME", 0],
@@ -125,6 +125,8 @@ async function seedDemoData(vehicleIds: string[], instructorIds: string[]) {
         type,
         result,
         fee,
+        // Échec → frais de repassage automatiques
+        retakeFee: result === "ECHOUE" || result === "ABSENT" ? (type === "CODE" ? 50 : 100) : 0,
         location: "Centre d'examen ATTT",
       },
     });
@@ -136,7 +138,7 @@ async function seedDemoData(vehicleIds: string[], instructorIds: string[]) {
     [0, -19, 30, "CODE", "ESPECES"],
     [0, -3, 70, "CONDUITE", "ESPECES"],
     [1, -40, 500, "INSCRIPTION", "VIREMENT"],
-    [1, -21, 30, "EXAMEN", "ESPECES"],
+    [1, -21, 50, "EXAMEN", "ESPECES"],
     [1, -8, 140, "CONDUITE", "CARTE"],
     [2, -10, 100, "INSCRIPTION", "ESPECES"],
     [3, -12, 200, "INSCRIPTION", "CHEQUE"],
@@ -201,6 +203,9 @@ async function main() {
         feeInscriptionCode: 100,
         feeInscriptionConduite: 200,
         feeInscriptionPark: 200,
+        feeRetakeCode: 50,
+        feeRetakePark: 100,
+        feeRetakeConduite: 100,
       },
     });
   }

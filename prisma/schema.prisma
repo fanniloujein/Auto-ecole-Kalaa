@@ -2,7 +2,9 @@
 // Base de données : PostgreSQL (Supabase / Neon en production)
 
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  // "rhel-openssl-3.0.x" : moteur requis par les fonctions serverless (Netlify / AWS Lambda)
+  binaryTargets = ["native", "rhel-openssl-3.0.x"]
 }
 
 datasource db {
@@ -167,8 +169,10 @@ model Exam {
   date     DateTime
   time     String?
   result   ExamResult @default(PROGRAMME)
-  /// Frais d'examen facturés au client (0 si inclus)
+  /// Autres frais d'examen facturés au client (0 si inclus)
   fee      Float      @default(0)
+  /// Frais de repassage facturés automatiquement quand l'examen est échoué ou manqué (tarif figé)
+  retakeFee Float     @default(0)
   location String?
   notes    String?
 
@@ -255,6 +259,10 @@ model Settings {
   feeInscriptionCode     Float @default(100)
   feeInscriptionConduite Float @default(200)
   feeInscriptionPark     Float @default(200)
+  // Frais de repassage d'un examen après un échec ou une absence
+  feeRetakeCode          Float @default(50)
+  feeRetakePark          Float @default(100)
+  feeRetakeConduite      Float @default(100)
 
   updatedAt DateTime @updatedAt
 

@@ -1,10 +1,10 @@
 import { prisma } from "@/lib/prisma";
 import { ExamsManager } from "@/components/exams-manager";
-import { attemptNumbers } from "@/lib/billing";
+import { attemptNumbers, retakeFeeFor, tariffsFrom } from "@/lib/billing";
 import { examTypeLabels, examTypeOrder } from "@/lib/labels";
 
 export default async function ExamensPage() {
-  const [exams, clients] = await Promise.all([
+  const [exams, clients, settings] = await Promise.all([
     prisma.exam.findMany({
       orderBy: [{ date: "desc" }, { createdAt: "desc" }],
       include: { client: { select: { firstName: true, lastName: true } } },
@@ -13,7 +13,11 @@ export default async function ExamensPage() {
       select: { id: true, firstName: true, lastName: true },
       orderBy: { firstName: "asc" },
     }),
+    prisma.settings.findFirst(),
   ]);
+
+  const tariffs = tariffsFrom(settings);
+  const retakeFees = Object.fromEntries(examTypeOrder.map((t) => [t, retakeFeeFor(t, tariffs)]));
 
   const attempts = attemptNumbers(exams);
 
@@ -70,11 +74,13 @@ export default async function ExamensPage() {
           time: e.time,
           result: e.result,
           fee: e.fee,
+          retakeFee: e.retakeFee,
           location: e.location,
           notes: e.notes,
           attempt: attempts.get(e.id) ?? 1,
         }))}
         clients={clients}
+        retakeFees={retakeFees}
       />
     </div>
   );
