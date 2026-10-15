@@ -3,7 +3,13 @@
 // des inscriptions, des heures effectuées et des frais d'examen ; le montant payé
 // à partir des paiements affectés à chaque catégorie.
 
-import { examTypeOrder, paymentCategoryOrder, type PaymentCategoryKey } from "@/lib/labels";
+import {
+  examTypeOrder,
+  paymentCategoryOrder,
+  paymentDetailOrder,
+  type PaymentCategoryKey,
+  type PaymentDetailKey,
+} from "@/lib/labels";
 
 export interface Tariffs {
   priceHourConduite: number;
@@ -94,8 +100,7 @@ export function sessionAmount(s: BillingSession) {
 }
 
 function sessionCategory(type: string): PaymentCategoryKey | null {
-  if (type === "CONDUITE" || type === "PARK") return "CONDUITE";
-  if (type === "CODE") return "CODE";
+  if (type === "CONDUITE" || type === "PARK" || type === "CODE") return type;
   return null;
 }
 
@@ -122,6 +127,7 @@ export interface BillingSession {
 
 export interface BillingPayment {
   category: string;
+  detail?: string | null;
   amount: number;
 }
 
@@ -140,8 +146,13 @@ export interface AccountLine {
   balance: number;
 }
 
+/** Comptes détaillés par code / conduite / park (inscription et repassage d'examen) */
+export type DetailedCategory = "INSCRIPTION" | "EXAMEN";
+
 export interface ClientAccount {
   lines: Record<PaymentCategoryKey, AccountLine>;
+  /** Détail des comptes inscription et repassage : dû / payé / reste pour code, conduite, park */
+  details: Record<DetailedCategory, Record<PaymentDetailKey, AccountLine>>;
   totalDue: number;
   totalPaid: number;
   balance: number;
@@ -156,13 +167,17 @@ export function computeClientAccount(
   payments: BillingPayment[],
   exams: BillingExam[]
 ): ClientAccount {
-  const due: Record<PaymentCategoryKey, number> = { INSCRIPTION: 0, CONDUITE: 0, CODE: 0, EXAMEN: 0 };
-  const paid: Record<PaymentCategoryKey, number> = { INSCRIPTION: 0, CONDUITE: 0, CODE: 0, EXAMEN: 0 };
+  const zero = () => ({ INSCRIPTION: 0, CODE: 0, CONDUITE: 0, PARK: 0, EXAMEN: 0 });
+  const zeroDetail = () => ({ CODE: 0, CONDUITE: 0, PARK: 0 });
+  const due: Record<PaymentCategoryKey, number> = zero();
+  const paid: Record<PaymentCategoryKey, number> = zero();
+  const detailDue = { INSCRIPTION: zeroDetail(), EXAMEN: zeroDetail() };
+  const detailPaid = { INSCRIPTION: zeroDetail(), EXAMEN: zeroDetail() };
   const hours = { conduite: 0, park: 0, code: 0 };
 
-  if (client.registeredCode) due.INSCRIPTION += client.feeInscriptionCode;
-  if (client.registeredConduite) due.INSCRIPTION += client.feeInscriptionConduite;
-  if (client.registeredPark) due.INSCRIPTION += client.feeInscriptionPark;
+  if (client.registeredCode) detailDue.INSCRIPTION.CODE += client.feeInscriptionCode;
+  if (client.registeredConduite) detailDue.INSCRIPTION.CONDUITE += client.feeInscriptionConduite;
+  if (client.registeredPark) detailDue.INSCRIPTION.PARK += client.feeInscriptionPark;
 
   for (const s of sessions) {
     if (!isBillable(s.status)) continue;
@@ -174,10 +189,27 @@ export function computeClientAccount(
     if (cat) due[cat] += h * s.hourlyRate;
   }
 
-  for (const e of exams) due.EXAMEN += e.fee + e.retakeFee;
+  for (const e of exams) {
+    if (e.type in detailDue.EXAMEN) detailDue.EXAMEN[e.type as PaymentDetailKey] += e.fee + e.retakeFee;
+  }
 
   for (const p of payments) {
-    if (p.category in paid) paid[p.category as PaymentCategoryKey] += p.amount;
+    if (!(p.category in paid)) continue;
+    paid[p.category as PaymentCategoryKey] += p.amount;
+    if ((p.category === "INSCRIPTION" || p.category === "EXAMEN") && p.detail && p.detail in zeroDetail()) {
+      detailPaid[p.category][p.detail as PaymentDetailKey] += p.amount;
+    }
+  }
+
+  const details = {} as Record<DetailedCategory, Record<PaymentDetailKey, AccountLine>>;
+  for (const c of ["INSCRIPTION", "EXAMEN"] as const) {
+    details[c] = {} as Record<PaymentDetailKey, AccountLine>;
+    for (const d of paymentDetailOrder) {
+      const dd = detailDue[c][d];
+      const dp = detailPaid[c][d];
+      details[c][d] = { due: round(dd), paid: round(dp), balance: round(dd - dp) };
+      due[c] += dd;
+    }
   }
 
   const lines = {} as Record<PaymentCategoryKey, AccountLine>;
@@ -192,6 +224,7 @@ export function computeClientAccount(
   const balance = round(totalDue - totalPaid);
   return {
     lines,
+    details,
     totalDue: round(totalDue),
     totalPaid: round(totalPaid),
     balance,

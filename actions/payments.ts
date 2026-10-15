@@ -27,6 +27,7 @@ export async function createPayment(input: unknown): Promise<ActionResult> {
         amount: data.amount,
         date: new Date(data.date),
         category: data.category,
+        detail: data.category === "INSCRIPTION" || data.category === "EXAMEN" ? data.detail : null,
         method: data.method,
         reference: data.reference || null,
         notes: data.notes || null,

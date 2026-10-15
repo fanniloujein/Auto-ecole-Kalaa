@@ -447,7 +447,7 @@ export function ExamsManager({
             <div className="col-span-2 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-xs px-3 py-2">
               En cas d&apos;échec ou d&apos;absence, les frais de repassage (
               <span className="font-semibold">{formatCurrency(retakeFees[formType] ?? 0)}</span>) sont
-              ajoutés automatiquement au compte Examens du client.
+              ajoutés automatiquement au compte « Repassage d&apos;examen » du client.
             </div>
             <div className="col-span-2">
               <label className={labelClass}>Notes</label>

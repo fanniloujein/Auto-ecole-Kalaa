@@ -1,5 +1,10 @@
 import { cn, formatCurrency } from "@/lib/utils";
-import { paymentCategoryLabels, paymentCategoryOrder } from "@/lib/labels";
+import {
+  paymentCategoryLabels,
+  paymentCategoryOrder,
+  paymentDetailLabels,
+  paymentDetailOrder,
+} from "@/lib/labels";
 import { formatHours, type ClientAccount } from "@/lib/billing";
 
 function balanceLabel(balance: number) {
@@ -10,13 +15,19 @@ function balanceLabel(balance: number) {
 
 /** Relevé de compte client : dû / payé / solde pour chaque compte */
 export function AccountStatement({ account }: { account: ClientAccount }) {
+  // Détail code / conduite / park des comptes inscription et repassage : "Code 100,00 TND · Park 200,00 TND"
+  const breakdown = (c: "INSCRIPTION" | "EXAMEN", empty: string) =>
+    paymentDetailOrder
+      .filter((d) => account.details[c][d].due > 0)
+      .map((d) => `${paymentDetailLabels[d]} ${formatCurrency(account.details[c][d].due)}`)
+      .join(" · ") || empty;
+
   const details: Record<string, string> = {
-    INSCRIPTION: "Frais d'inscription",
-    CONDUITE: `${formatHours(account.hours.conduite + account.hours.park)} effectuées${
-      account.hours.park > 0 ? ` (dont park ${formatHours(account.hours.park)})` : ""
-    }`,
+    INSCRIPTION: breakdown("INSCRIPTION", "Aucune inscription"),
     CODE: `${formatHours(account.hours.code)} effectuées`,
-    EXAMEN: "Frais d'examen et de repassage",
+    CONDUITE: `${formatHours(account.hours.conduite)} effectuées`,
+    PARK: `${formatHours(account.hours.park)} effectuées`,
+    EXAMEN: breakdown("EXAMEN", "Aucun repassage"),
   };
 
   return (

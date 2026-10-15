@@ -270,12 +270,13 @@ export default async function ClientDetailPage({
 
       <ClientPaymentsSection
         clientId={client.id}
-        lines={account.lines}
+        account={{ lines: account.lines, details: account.details }}
         payments={client.payments.map((p: (typeof client.payments)[number]) => ({
           id: p.id,
           amount: p.amount,
           date: p.date.toISOString(),
           category: p.category,
+          detail: p.detail,
           method: p.method,
           reference: p.reference,
           notes: p.notes,

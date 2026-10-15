@@ -7,14 +7,19 @@ import { Modal } from "@/components/modal";
 import { useToast } from "@/components/toast";
 import { createPayment, deletePayment } from "@/actions/payments";
 import { formatCurrency, formatDate } from "@/lib/utils";
-import { paymentCategoryLabels, paymentCategoryOrder, paymentMethodLabels } from "@/lib/labels";
-import type { AccountLine } from "@/lib/billing";
+import { paymentLabel, paymentMethodLabels } from "@/lib/labels";
+import {
+  PaymentAccountFields,
+  defaultAccountChoice,
+  type AccountSnapshot,
+} from "@/components/payment-account-fields";
 
 interface PaymentItem {
   id: string;
   amount: number;
   date: string;
   category: string;
+  detail: string | null;
   method: string;
   reference: string | null;
   notes: string | null;
@@ -24,13 +29,13 @@ export function ClientPaymentsSection({
   clientId,
   payments,
   clientName,
-  lines,
+  account,
 }: {
   clientId: string;
   payments: PaymentItem[];
   clientName: string;
-  /** Solde par compte, pour proposer par défaut le compte qui a un reste à payer */
-  lines: Record<string, AccountLine>;
+  /** Soldes par compte, pour proposer par défaut le compte qui a un reste à payer */
+  account: AccountSnapshot;
 }) {
   const router = useRouter();
   const { notify } = useToast();
@@ -38,6 +43,16 @@ export function ClientPaymentsSection({
   const [deleting, setDeleting] = useState<PaymentItem | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const [category, setCategory] = useState("INSCRIPTION");
+  const [detail, setDetail] = useState("CODE");
+
+  function openCreate() {
+    const choice = defaultAccountChoice(account);
+    setCategory(choice.category);
+    setDetail(choice.detail);
+    setError(null);
+    setModalOpen(true);
+  }
 
   function handleSubmit(formData: FormData) {
     setError(null);
@@ -45,7 +60,8 @@ export function ClientPaymentsSection({
       clientId,
       amount: formData.get("amount"),
       date: formData.get("date"),
-      category: formData.get("category"),
+      category,
+      detail: detail || null,
       method: formData.get("method"),
       reference: formData.get("reference") || null,
       notes: formData.get("notes") || null,
@@ -77,9 +93,6 @@ export function ClientPaymentsSection({
     });
   }
 
-  const defaultCategory =
-    paymentCategoryOrder.find((c) => lines[c] && lines[c].balance > 0) ?? "CONDUITE";
-
   const inputClass =
     "w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600";
   const labelClass = "block text-xs font-medium text-slate-600 mb-1";
@@ -89,10 +102,7 @@ export function ClientPaymentsSection({
       <div className="px-5 py-4 border-b border-slate-200 flex items-center justify-between">
         <h2 className="font-semibold text-slate-800">Paiements</h2>
         <button
-          onClick={() => {
-            setError(null);
-            setModalOpen(true);
-          }}
+          onClick={openCreate}
           className="inline-flex items-center gap-1.5 text-sm font-medium text-blue-700 hover:text-blue-800"
         >
           <Plus className="h-4 w-4" /> Enregistrer un paiement
@@ -108,7 +118,7 @@ export function ClientPaymentsSection({
               <p className="text-sm font-medium text-slate-800">
                 {formatCurrency(p.amount)}
                 <span className="ml-2 text-xs font-medium text-slate-500 bg-slate-100 rounded px-1.5 py-0.5">
-                  {paymentCategoryLabels[p.category] ?? p.category}
+                  {paymentLabel(p.category, p.detail)}
                 </span>
               </p>
               <p className="text-xs text-slate-400">
@@ -129,19 +139,17 @@ export function ClientPaymentsSection({
       <Modal open={modalOpen} onClose={() => setModalOpen(false)} title="Enregistrer un paiement">
         <form action={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-2 gap-3">
-            <div className="col-span-2">
-              <label className={labelClass}>Compte *</label>
-              <select name="category" defaultValue={defaultCategory} className={inputClass}>
-                {paymentCategoryOrder.map((c) => (
-                  <option key={c} value={c}>
-                    {paymentCategoryLabels[c]}
-                    {lines[c] && lines[c].balance > 0
-                      ? ` — reste ${formatCurrency(lines[c].balance)}`
-                      : ""}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <PaymentAccountFields
+              category={category}
+              detail={detail}
+              onChange={(c, d) => {
+                setCategory(c);
+                setDetail(d);
+              }}
+              account={account}
+              inputClass={inputClass}
+              labelClass={labelClass}
+            />
             <div>
               <label className={labelClass}>Montant *</label>
               <input

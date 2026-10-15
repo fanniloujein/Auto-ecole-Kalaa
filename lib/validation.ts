@@ -4,7 +4,8 @@ export const licenseTypeEnum = z.enum(["A", "A1", "B", "C", "D", "BE", "CE"]);
 export const sessionStatusEnum = z.enum(["PREVUE", "EFFECTUEE", "ANNULEE", "ABSENCE"]);
 export const sessionTypeEnum = z.enum(["CONDUITE", "PARK", "CODE", "AUTRE"]);
 export const paymentMethodEnum = z.enum(["ESPECES", "VIREMENT", "CHEQUE", "CARTE", "AUTRE"]);
-export const paymentCategoryEnum = z.enum(["INSCRIPTION", "CONDUITE", "CODE", "EXAMEN"]);
+export const paymentCategoryEnum = z.enum(["INSCRIPTION", "CODE", "CONDUITE", "PARK", "EXAMEN"]);
+export const paymentDetailEnum = z.enum(["CODE", "CONDUITE", "PARK"]);
 export const examTypeEnum = z.enum(["CODE", "PARK", "CONDUITE"]);
 export const examResultEnum = z.enum(["PROGRAMME", "REUSSI", "ECHOUE", "ABSENT"]);
 export const expenseCategoryEnum = z.enum([
@@ -62,15 +63,20 @@ export const sessionSchema = z
 
 export type SessionFormValues = z.infer<typeof sessionSchema>;
 
-export const paymentSchema = z.object({
-  clientId: z.string().min(1, "Le client est requis"),
-  amount: z.coerce.number().positive("Le montant doit être positif"),
-  date: z.string().min(1, "La date est requise"),
-  category: paymentCategoryEnum,
-  method: paymentMethodEnum,
-  reference: z.string().optional().nullable(),
-  notes: z.string().optional().nullable(),
-});
+export const paymentSchema = z
+  .object({
+    clientId: z.string().min(1, "Le client est requis"),
+    amount: z.coerce.number().positive("Le montant doit être positif"),
+    date: z.string().min(1, "La date est requise"),
+    category: paymentCategoryEnum,
+    detail: paymentDetailEnum.optional().nullable(),
+    method: paymentMethodEnum,
+    reference: z.string().optional().nullable(),
+    notes: z.string().optional().nullable(),
+  })
+  .refine((p) => !["INSCRIPTION", "EXAMEN"].includes(p.category) || !!p.detail, {
+    message: "Précisez : code, conduite ou park",
+  });
 
 export type PaymentFormValues = z.infer<typeof paymentSchema>;
 

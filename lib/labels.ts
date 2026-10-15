@@ -40,13 +40,36 @@ export function examResultColor(result: string) {
 
 export const paymentCategoryLabels: Record<string, string> = {
   INSCRIPTION: "Inscription",
-  CONDUITE: "Conduite",
   CODE: "Code",
-  EXAMEN: "Examens",
+  CONDUITE: "Conduite",
+  PARK: "Park",
+  EXAMEN: "Repassage d'examen",
 };
 
-export const paymentCategoryOrder = ["INSCRIPTION", "CONDUITE", "CODE", "EXAMEN"] as const;
+export const paymentCategoryOrder = ["INSCRIPTION", "CODE", "CONDUITE", "PARK", "EXAMEN"] as const;
 export type PaymentCategoryKey = (typeof paymentCategoryOrder)[number];
+
+/** Comptes pour lesquels il faut préciser code / conduite / park */
+export const categoriesWithDetail = ["INSCRIPTION", "EXAMEN"] as const;
+
+export function categoryNeedsDetail(category: string) {
+  return (categoriesWithDetail as readonly string[]).includes(category);
+}
+
+export const paymentDetailLabels: Record<string, string> = {
+  CODE: "Code",
+  CONDUITE: "Conduite",
+  PARK: "Park",
+};
+
+export const paymentDetailOrder = ["CODE", "CONDUITE", "PARK"] as const;
+export type PaymentDetailKey = (typeof paymentDetailOrder)[number];
+
+/** Libellé complet d'un paiement : "Inscription · Code", "Repassage d'examen · Park", "Conduite"... */
+export function paymentLabel(category: string, detail?: string | null) {
+  const base = paymentCategoryLabels[category] ?? category;
+  return detail ? `${base} · ${paymentDetailLabels[detail] ?? detail}` : base;
+}
 
 export const paymentMethodLabels: Record<string, string> = {
   ESPECES: "Espèces",

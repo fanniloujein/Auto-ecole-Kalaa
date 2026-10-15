@@ -7,8 +7,17 @@ import { Modal } from "@/components/modal";
 import { useToast } from "@/components/toast";
 import { createPayment, deletePayment } from "@/actions/payments";
 import { cn, formatCurrency, formatDate } from "@/lib/utils";
-import { paymentCategoryLabels, paymentCategoryOrder, paymentMethodLabels } from "@/lib/labels";
-import type { AccountLine } from "@/lib/billing";
+import {
+  paymentCategoryLabels,
+  paymentCategoryOrder,
+  paymentLabel,
+  paymentMethodLabels,
+} from "@/lib/labels";
+import {
+  PaymentAccountFields,
+  defaultAccountChoice,
+  type AccountSnapshot,
+} from "@/components/payment-account-fields";
 
 interface PaymentRow {
   id: string;
@@ -17,6 +26,7 @@ interface PaymentRow {
   amount: number;
   date: string;
   category: string;
+  detail: string | null;
   method: string;
   reference: string | null;
 }
@@ -25,7 +35,7 @@ interface ClientOption {
   id: string;
   firstName: string;
   lastName: string;
-  lines: Record<string, AccountLine>;
+  account: AccountSnapshot;
 }
 
 interface CategorySummary {
@@ -53,6 +63,7 @@ export function PaymentsOverview({
   const [isPending, startTransition] = useTransition();
   const [selectedClient, setSelectedClient] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("INSCRIPTION");
+  const [selectedDetail, setSelectedDetail] = useState("CODE");
 
   const filtered = useMemo(() => {
     return payments.filter(
@@ -72,14 +83,15 @@ export function PaymentsOverview({
     setError(null);
     setSelectedClient("");
     setSelectedCategory("INSCRIPTION");
+    setSelectedDetail("CODE");
     setModalOpen(true);
   }
 
   function handleClientChange(id: string) {
     setSelectedClient(id);
-    const c = clients.find((x) => x.id === id);
-    const firstDue = c && paymentCategoryOrder.find((cat) => c.lines[cat]?.balance > 0);
-    if (firstDue) setSelectedCategory(firstDue);
+    const choice = defaultAccountChoice(clients.find((x) => x.id === id)?.account);
+    setSelectedCategory(choice.category);
+    setSelectedDetail(choice.detail);
   }
 
   function handleSubmit(formData: FormData) {
@@ -88,7 +100,8 @@ export function PaymentsOverview({
       clientId: formData.get("clientId"),
       amount: formData.get("amount"),
       date: formData.get("date"),
-      category: formData.get("category"),
+      category: selectedCategory,
+      detail: selectedDetail || null,
       method: formData.get("method"),
       reference: formData.get("reference") || null,
       notes: formData.get("notes") || null,
@@ -137,7 +150,7 @@ export function PaymentsOverview({
         </div>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
         {summary.map((s) => (
           <button
             key={s.category}
@@ -215,7 +228,7 @@ export function PaymentsOverview({
                 <tr key={p.id} className="hover:bg-slate-50">
                   <td className="px-4 py-3 font-medium text-slate-800">{p.clientName}</td>
                   <td className="px-4 py-3 text-slate-600">
-                    {paymentCategoryLabels[p.category] ?? p.category}
+                    {paymentLabel(p.category, p.detail)}
                   </td>
                   <td className="px-4 py-3 text-slate-700 font-medium">{formatCurrency(p.amount)}</td>
                   <td className="px-4 py-3 text-slate-600">{formatDate(p.date)}</td>
@@ -283,9 +296,9 @@ export function PaymentsOverview({
           </div>
 
           {client && (
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
               {paymentCategoryOrder.map((cat) => {
-                const line = client.lines[cat];
+                const line = client.account.lines[cat];
                 return (
                   <div key={cat} className="rounded-lg border border-slate-200 px-3 py-2">
                     <p className="text-[11px] font-semibold uppercase text-slate-500">
@@ -310,21 +323,17 @@ export function PaymentsOverview({
           )}
 
           <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className={labelClass}>Compte *</label>
-              <select
-                name="category"
-                value={selectedCategory}
-                onChange={(e) => setSelectedCategory(e.target.value)}
-                className={inputClass}
-              >
-                {paymentCategoryOrder.map((c) => (
-                  <option key={c} value={c}>
-                    {paymentCategoryLabels[c]}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <PaymentAccountFields
+              category={selectedCategory}
+              detail={selectedDetail}
+              onChange={(c, d) => {
+                setSelectedCategory(c);
+                setSelectedDetail(d);
+              }}
+              account={client?.account}
+              inputClass={inputClass}
+              labelClass={labelClass}
+            />
             <div>
               <label className={labelClass}>Montant *</label>
               <input type="number" min={0.001} step="0.001" name="amount" required className={inputClass} />

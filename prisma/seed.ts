@@ -132,20 +132,27 @@ async function seedDemoData(vehicleIds: string[], instructorIds: string[]) {
     });
   }
 
-  // Paiements par compte : [client, jour, montant, compte, mode]
-  const paymentsData: [number, number, number, "INSCRIPTION" | "CONDUITE" | "CODE" | "EXAMEN", "ESPECES" | "VIREMENT" | "CHEQUE" | "CARTE"][] = [
-    [0, -40, 300, "INSCRIPTION", "ESPECES"],
-    [0, -19, 30, "CODE", "ESPECES"],
-    [0, -3, 70, "CONDUITE", "ESPECES"],
-    [1, -40, 500, "INSCRIPTION", "VIREMENT"],
-    [1, -21, 50, "EXAMEN", "ESPECES"],
-    [1, -8, 140, "CONDUITE", "CARTE"],
-    [2, -10, 100, "INSCRIPTION", "ESPECES"],
-    [3, -12, 200, "INSCRIPTION", "CHEQUE"],
+  // Paiements par compte : [client, jour, montant, compte, précision, mode]
+  type Category = "INSCRIPTION" | "CODE" | "CONDUITE" | "PARK" | "EXAMEN";
+  type Detail = "CODE" | "CONDUITE" | "PARK" | null;
+  const paymentsData: [number, number, number, Category, Detail, "ESPECES" | "VIREMENT" | "CHEQUE" | "CARTE"][] = [
+    [0, -40, 100, "INSCRIPTION", "CODE", "ESPECES"],
+    [0, -40, 200, "INSCRIPTION", "CONDUITE", "ESPECES"],
+    [0, -19, 30, "CODE", null, "ESPECES"],
+    [0, -10, 28, "PARK", null, "ESPECES"],
+    [0, -3, 42, "CONDUITE", null, "ESPECES"],
+    [1, -40, 100, "INSCRIPTION", "CODE", "VIREMENT"],
+    [1, -40, 200, "INSCRIPTION", "PARK", "VIREMENT"],
+    [1, -40, 200, "INSCRIPTION", "CONDUITE", "VIREMENT"],
+    [1, -21, 50, "EXAMEN", "CODE", "ESPECES"],
+    [1, -15, 28, "PARK", null, "CARTE"],
+    [1, -8, 56, "CONDUITE", null, "CARTE"],
+    [2, -10, 100, "INSCRIPTION", "CODE", "ESPECES"],
+    [3, -12, 200, "INSCRIPTION", "PARK", "CHEQUE"],
   ];
-  for (const [ci, day, amount, category, method] of paymentsData) {
+  for (const [ci, day, amount, category, detail, method] of paymentsData) {
     await prisma.payment.create({
-      data: { clientId: clients[ci].id, date: daysFromToday(day), amount, category, method },
+      data: { clientId: clients[ci].id, date: daysFromToday(day), amount, category, detail, method },
     });
   }
 
