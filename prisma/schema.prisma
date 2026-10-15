@@ -169,8 +169,10 @@ model Exam {
   date     DateTime
   time     String?
   result   ExamResult @default(PROGRAMME)
-  /// Frais d'examen facturés au client (0 si inclus)
+  /// Autres frais d'examen facturés au client (0 si inclus)
   fee      Float      @default(0)
+  /// Frais de repassage facturés automatiquement quand l'examen est échoué ou manqué (tarif figé)
+  retakeFee Float     @default(0)
   location String?
   notes    String?
 

@@ -240,6 +240,7 @@ export default async function ClientDetailPage({
           time: e.time,
           result: e.result,
           fee: e.fee,
+          retakeFee: e.retakeFee,
           location: e.location,
           notes: e.notes,
           attempt: attempts.get(e.id) ?? 1,

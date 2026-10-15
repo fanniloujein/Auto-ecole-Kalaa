@@ -111,7 +111,7 @@ async function seedDemoData(vehicleIds: string[], instructorIds: string[]) {
     [0, -14, "CODE", "REUSSI", 0],
     [0, 6, "PARK", "PROGRAMME", 0],
     [1, -30, "CODE", "ECHOUE", 0],
-    [1, -21, "CODE", "REUSSI", 50],
+    [1, -21, "CODE", "REUSSI", 0],
     [1, -9, "PARK", "REUSSI", 0],
     [1, 10, "CONDUITE", "PROGRAMME", 0],
     [2, 4, "CODE", "PROGRAMME", 0],
@@ -125,6 +125,8 @@ async function seedDemoData(vehicleIds: string[], instructorIds: string[]) {
         type,
         result,
         fee,
+        // Échec → frais de repassage automatiques
+        retakeFee: result === "ECHOUE" || result === "ABSENT" ? (type === "CODE" ? 50 : 100) : 0,
         location: "Centre d'examen ATTT",
       },
     });

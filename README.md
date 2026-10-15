@@ -30,7 +30,7 @@ Plateforme interne complète pour la gestion d'une auto-école : clients, inscri
   | Repassage examen de conduite | 100 TND |
 
   Seules les séances **effectuées** sont facturées, au prorata de leur durée (1 h 30 de conduite = 42 TND). Le tarif est figé sur chaque séance et chaque inscription : un changement de tarif ne modifie pas l'historique.
-- **Examens** (code, park, conduite) : résultats *Programmé / Réussi / Échoué / Absent*, **nombre de passages illimité** (en cas d'échec, on programme un nouveau passage), **frais de repassage proposés automatiquement** après un échec (affectés au compte Examens), taux de réussite par examen
+- **Examens** (code, park, conduite) : résultats *Programmé / Réussi / Échoué / Absent*, **nombre de passages illimité** (en cas d'échec, on programme un nouveau passage), **frais de repassage ajoutés automatiquement** dès qu'un examen est marqué « Échoué » ou « Absent » (compte Examens), saisie du résultat en un clic (boutons *Réussi* / *Échoué*), taux de réussite par examen
 - **Paiements séparés par compte** : inscription, conduite, code, examens — avec, pour chaque client et chaque compte, le montant dû, payé et le reste (ou l'avance)
 - **Dépenses / sorties d'argent** : carburant, entretien, assurance, salaires, loyer, factures, frais d'examen, taxes, fournitures... avec filtres par mois et répartition par catégorie
 - Séances (calendrier + liste, statuts : prévue / effectuée / annulée / absence) et planning mensuel

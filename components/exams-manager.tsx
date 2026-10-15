@@ -2,12 +2,11 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Pencil, Trash2, Search, RotateCcw } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, RotateCcw, Check, X } from "lucide-react";
 import { Modal } from "@/components/modal";
 import { useToast } from "@/components/toast";
-import { createExam, updateExam, deleteExam } from "@/actions/exams";
+import { createExam, updateExam, deleteExam, setExamResult } from "@/actions/exams";
 import { cn, formatCurrency, formatDate } from "@/lib/utils";
-import { isRetake } from "@/lib/billing";
 import {
   examResultColor,
   examResultLabels,
@@ -24,6 +23,7 @@ export interface ExamRow {
   time: string | null;
   result: string;
   fee: number;
+  retakeFee: number;
   location: string | null;
   notes: string | null;
   attempt: number;
@@ -53,7 +53,7 @@ export function ExamsManager({
   exams: ExamRow[];
   clients?: ClientOption[];
   clientId?: string;
-  /** Frais de repassage par type d'examen (CODE, PARK, CONDUITE) */
+  /** Frais de repassage par type d'examen (CODE, PARK, CONDUITE), ajoutés automatiquement en cas d'échec */
   retakeFees: Record<string, number>;
 }) {
   const router = useRouter();
@@ -63,10 +63,8 @@ export function ExamsManager({
   const [resultFilter, setResultFilter] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<ExamRow | undefined>(undefined);
-  const [formClient, setFormClient] = useState("");
+  const [preset, setPreset] = useState<{ clientId?: string; type?: string }>({});
   const [formType, setFormType] = useState("CODE");
-  const [fee, setFee] = useState<number | string>(0);
-  const [feeTouched, setFeeTouched] = useState(false);
   const [deleting, setDeleting] = useState<ExamRow | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -82,39 +80,36 @@ export function ExamsManager({
     );
   }, [exams, query, typeFilter, resultFilter]);
 
-  /** Frais proposés : frais de repassage si le client a déjà échoué à cet examen */
-  function defaultFee(forClient: string, type: string) {
-    return forClient && isRetake(exams, forClient, type) ? retakeFees[type] ?? 0 : 0;
-  }
-
-  const retake = !editing && !!formClient && isRetake(exams, formClient, formType);
-
   function openCreate(p: { clientId?: string; type?: string } = {}) {
-    const c = clientId ?? p.clientId ?? "";
-    const t = p.type ?? "CODE";
     setEditing(undefined);
-    setFormClient(c);
-    setFormType(t);
-    setFee(defaultFee(c, t));
-    setFeeTouched(false);
+    setPreset(p);
+    setFormType(p.type ?? "CODE");
     setError(null);
     setModalOpen(true);
   }
 
   function openEdit(e: ExamRow) {
     setEditing(e);
-    setFormClient(e.clientId);
+    setPreset({});
     setFormType(e.type);
-    setFee(e.fee);
-    setFeeTouched(true);
     setError(null);
     setModalOpen(true);
   }
 
-  function changeClientOrType(c: string, t: string) {
-    setFormClient(c);
-    setFormType(t);
-    if (!editing && !feeTouched) setFee(defaultFee(c, t));
+  function quickResult(e: ExamRow, result: "REUSSI" | "ECHOUE") {
+    startTransition(async () => {
+      const res = await setExamResult(e.id, result);
+      if (res.success) {
+        notify(
+          result === "REUSSI"
+            ? `${examTypeLabels[e.type]} réussi`
+            : `Échec enregistré — frais de repassage ajoutés (${formatCurrency(retakeFees[e.type] ?? 0)})`
+        );
+        router.refresh();
+      } else {
+        notify(res.error, "error");
+      }
+    });
   }
 
   function handleSubmit(formData: FormData) {
@@ -125,7 +120,7 @@ export function ExamsManager({
       date: formData.get("date"),
       time: formData.get("time") || null,
       result: formData.get("result"),
-      fee: fee === "" ? 0 : fee,
+      fee: formData.get("fee") || 0,
       location: formData.get("location") || null,
       notes: formData.get("notes") || null,
     };
@@ -162,6 +157,7 @@ export function ExamsManager({
 
   const actions = (e: ExamRow) => (
     <div className="flex items-center justify-end gap-1">
+
       {(e.result === "ECHOUE" || e.result === "ABSENT") &&
         !exams.some(
           (x) =>
@@ -194,11 +190,45 @@ export function ExamsManager({
     </div>
   );
 
-  const resultBadge = (result: string) => (
-    <span className={cn("text-xs font-medium px-2 py-1 rounded-full border", examResultColor(result))}>
-      {examResultLabels[result] ?? result}
-    </span>
-  );
+  // Examen programmé : saisie du résultat en un clic ; sinon badge du résultat
+  const resultBadge = (e: ExamRow) =>
+    e.result === "PROGRAMME" ? (
+      <div className="flex items-center gap-1">
+        <button
+          onClick={() => quickResult(e, "REUSSI")}
+          disabled={isPending}
+          className="inline-flex items-center gap-1 rounded-lg border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 text-xs font-medium px-2 py-1.5 disabled:opacity-60"
+          title="Marquer comme réussi"
+        >
+          <Check className="h-3.5 w-3.5" /> Réussi
+        </button>
+        <button
+          onClick={() => quickResult(e, "ECHOUE")}
+          disabled={isPending}
+          className="inline-flex items-center gap-1 rounded-lg border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 text-xs font-medium px-2 py-1.5 disabled:opacity-60"
+          title={`Marquer comme échoué (+${formatCurrency(retakeFees[e.type] ?? 0)} de repassage)`}
+        >
+          <X className="h-3.5 w-3.5" /> Échoué
+        </button>
+      </div>
+    ) : (
+      <span
+        className={cn(
+          "text-xs font-medium px-2 py-1 rounded-full border whitespace-nowrap",
+          examResultColor(e.result)
+        )}
+      >
+        {examResultLabels[e.result] ?? e.result}
+      </span>
+    );
+
+  const feesLabel = (e: ExamRow) =>
+    [
+      e.retakeFee > 0 && `Repassage ${formatCurrency(e.retakeFee)}`,
+      e.fee > 0 && `Frais ${formatCurrency(e.fee)}`,
+    ]
+      .filter(Boolean)
+      .join(" · ");
 
   return (
     <div className={compact ? "bg-white rounded-xl border border-slate-200 shadow-sm no-print" : "space-y-4"}>
@@ -275,11 +305,13 @@ export function ExamsManager({
                   {formatDate(e.date)}
                   {e.time ? ` à ${e.time}` : ""}
                   {e.location ? ` · ${e.location}` : ""}
-                  {e.fee > 0 ? ` · Frais ${formatCurrency(e.fee)}` : ""}
                 </p>
+                {feesLabel(e) && (
+                  <p className="text-xs font-medium text-rose-600">{feesLabel(e)}</p>
+                )}
               </div>
               <div className="flex items-center gap-1">
-                {resultBadge(e.result)}
+                {resultBadge(e)}
                 {actions(e)}
               </div>
             </div>
@@ -291,37 +323,36 @@ export function ExamsManager({
             <table className="w-full text-sm">
               <thead className="bg-slate-50 text-slate-500 text-xs uppercase">
                 <tr>
-                  <th className="text-left px-4 py-3 font-medium">Client</th>
-                  <th className="text-left px-4 py-3 font-medium">Examen</th>
-                  <th className="text-left px-4 py-3 font-medium">Passage</th>
-                  <th className="text-left px-4 py-3 font-medium">Date</th>
-                  <th className="text-left px-4 py-3 font-medium">Lieu</th>
-                  <th className="text-left px-4 py-3 font-medium">Frais</th>
-                  <th className="text-left px-4 py-3 font-medium">Résultat</th>
-                  <th className="text-right px-4 py-3 font-medium">Actions</th>
+                  <th className="text-left px-3 py-3 font-medium">Client</th>
+                  <th className="text-left px-3 py-3 font-medium">Examen</th>
+                  <th className="text-left px-3 py-3 font-medium">Passage</th>
+                  <th className="text-left px-3 py-3 font-medium">Date</th>
+                  <th className="text-left px-3 py-3 font-medium">Frais</th>
+                  <th className="text-left px-3 py-3 font-medium">Résultat</th>
+                  <th className="text-right px-3 py-3 font-medium">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {filtered.map((e) => (
                   <tr key={e.id} className="hover:bg-slate-50">
-                    <td className="px-4 py-3 font-medium text-slate-800 whitespace-nowrap">{e.clientName}</td>
-                    <td className="px-4 py-3 text-slate-600 whitespace-nowrap">{examTypeLabels[e.type]}</td>
-                    <td className="px-4 py-3 text-slate-600 whitespace-nowrap">{ordinal(e.attempt)}</td>
-                    <td className="px-4 py-3 text-slate-600 whitespace-nowrap">
+                    <td className="px-3 py-3 font-medium text-slate-800 whitespace-nowrap">{e.clientName}</td>
+                    <td className="px-3 py-3 text-slate-600 whitespace-nowrap">{examTypeLabels[e.type]}</td>
+                    <td className="px-3 py-3 text-slate-600 whitespace-nowrap">{ordinal(e.attempt)}</td>
+                    <td className="px-3 py-3 text-slate-600 whitespace-nowrap">
                       {formatDate(e.date)}
                       {e.time ? ` · ${e.time}` : ""}
+                      {e.location && <p className="text-xs text-slate-400">{e.location}</p>}
                     </td>
-                    <td className="px-4 py-3 text-slate-600">{e.location ?? "—"}</td>
-                    <td className="px-4 py-3 text-slate-600 whitespace-nowrap">
-                      {e.fee > 0 ? formatCurrency(e.fee) : "—"}
+                    <td className="px-3 py-3 text-slate-600 whitespace-nowrap">
+                      {feesLabel(e) || "—"}
                     </td>
-                    <td className="px-4 py-3">{resultBadge(e.result)}</td>
-                    <td className="px-4 py-3">{actions(e)}</td>
+                    <td className="px-3 py-3">{resultBadge(e)}</td>
+                    <td className="px-3 py-3">{actions(e)}</td>
                   </tr>
                 ))}
                 {filtered.length === 0 && (
                   <tr>
-                    <td colSpan={8} className="px-4 py-10 text-center text-slate-400">
+                    <td colSpan={7} className="px-4 py-10 text-center text-slate-400">
                       Aucun examen trouvé.
                     </td>
                   </tr>
@@ -344,8 +375,7 @@ export function ExamsManager({
               <select
                 name="clientId"
                 required
-                value={formClient}
-                onChange={(e) => changeClientOrType(e.target.value, formType)}
+                defaultValue={editing?.clientId ?? preset.clientId ?? ""}
                 className={inputClass}
               >
                 <option value="" disabled>
@@ -365,7 +395,7 @@ export function ExamsManager({
               <select
                 name="type"
                 value={formType}
-                onChange={(e) => changeClientOrType(formClient, e.target.value)}
+                onChange={(e) => setFormType(e.target.value)}
                 className={inputClass}
               >
                 {examTypeOrder.map((t) => (
@@ -404,36 +434,26 @@ export function ExamsManager({
               <input name="location" defaultValue={editing?.location ?? ""} className={inputClass} />
             </div>
             <div>
-              <label className={labelClass}>Frais facturés au client</label>
+              <label className={labelClass}>Autres frais (optionnel)</label>
               <input
                 type="number"
                 min={0}
                 step="0.001"
                 name="fee"
-                value={fee}
-                onChange={(e) => {
-                  setFee(e.target.value);
-                  setFeeTouched(true);
-                }}
+                defaultValue={editing?.fee ?? 0}
                 className={inputClass}
               />
             </div>
-            {retake && (
-              <div className="col-span-2 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-xs px-3 py-2">
-                Repassage : le client a déjà échoué à cet examen. Frais de repassage proposés :{" "}
-                <span className="font-semibold">{formatCurrency(retakeFees[formType] ?? 0)}</span>{" "}
-                (ajoutés au compte Examens du client).
-              </div>
-            )}
+            <div className="col-span-2 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-xs px-3 py-2">
+              En cas d&apos;échec ou d&apos;absence, les frais de repassage (
+              <span className="font-semibold">{formatCurrency(retakeFees[formType] ?? 0)}</span>) sont
+              ajoutés automatiquement au compte Examens du client.
+            </div>
             <div className="col-span-2">
               <label className={labelClass}>Notes</label>
               <textarea name="notes" rows={2} defaultValue={editing?.notes ?? ""} className={inputClass} />
             </div>
           </div>
-          <p className="text-xs text-slate-500">
-            En cas d&apos;échec ou d&apos;absence, programmez simplement un nouveau passage : le nombre de
-            passages n&apos;est pas limité.
-          </p>
 
           {error && (
             <div className="rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-sm px-3 py-2">

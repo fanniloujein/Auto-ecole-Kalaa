@@ -56,20 +56,9 @@ export function retakeFeeFor(examType: string, tariffs: Tariffs) {
   }
 }
 
-/** Un nouveau passage est un repassage si le client a déjà échoué (ou été absent) à cet examen */
-export function isRetake(
-  exams: { id?: string; clientId: string; type: string; result: string }[],
-  clientId: string,
-  type: string,
-  excludeId?: string
-) {
-  return exams.some(
-    (e) =>
-      e.clientId === clientId &&
-      e.type === type &&
-      e.id !== excludeId &&
-      (e.result === "ECHOUE" || e.result === "ABSENT")
-  );
+/** Un examen échoué ou manqué doit être repassé (et donne lieu à des frais de repassage) */
+export function isFailedResult(result: string) {
+  return result === "ECHOUE" || result === "ABSENT";
 }
 
 /** Tarif horaire applicable à un type de séance (le park est facturé au tarif conduite) */
@@ -140,6 +129,7 @@ export interface BillingExam {
   type: string;
   result: string;
   fee: number;
+  retakeFee: number;
   date: Date | string;
 }
 
@@ -184,7 +174,7 @@ export function computeClientAccount(
     if (cat) due[cat] += h * s.hourlyRate;
   }
 
-  for (const e of exams) due.EXAMEN += e.fee;
+  for (const e of exams) due.EXAMEN += e.fee + e.retakeFee;
 
   for (const p of payments) {
     if (p.category in paid) paid[p.category as PaymentCategoryKey] += p.amount;

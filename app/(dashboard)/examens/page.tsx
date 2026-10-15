@@ -74,6 +74,7 @@ export default async function ExamensPage() {
           time: e.time,
           result: e.result,
           fee: e.fee,
+          retakeFee: e.retakeFee,
           location: e.location,
           notes: e.notes,
           attempt: attempts.get(e.id) ?? 1,

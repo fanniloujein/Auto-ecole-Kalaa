@@ -27,7 +27,7 @@ const groups = [
   },
   {
     title: "Repassage d'examen",
-    hint: "Facturés au client qui repasse un examen après un échec ou une absence. Proposés automatiquement lors de la programmation du nouveau passage (compte Examens).",
+    hint: "Ajoutés automatiquement au compte Examens du client dès qu'un examen est marqué « Échoué » ou « Absent ».",
     fields: [
       { name: "feeRetakeCode", label: "Repassage examen du code" },
       { name: "feeRetakePark", label: "Repassage examen du park" },
