@@ -11,6 +11,7 @@ import { formatHours } from "@/lib/billing";
 import type { getClientDossier } from "@/lib/accounts";
 import { AccountStatement } from "@/components/account-statement";
 import { ExamSteps } from "@/components/exam-steps";
+import { Signature } from "@/components/signature";
 
 type Dossier = NonNullable<Awaited<ReturnType<typeof getClientDossier>>>;
 
@@ -201,6 +202,7 @@ export function ClientFiche({ dossier, school }: { dossier: Dossier; school: Sch
 
       <div className="border-t border-slate-200 pt-4 mt-8 text-center text-xs text-slate-400">
         {schoolName} — Document édité le {formatDate(new Date())}. Merci de votre confiance.
+        <Signature className="mt-2 text-slate-400" />
       </div>
     </div>
   );
