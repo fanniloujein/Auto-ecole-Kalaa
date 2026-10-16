@@ -1,4 +1,5 @@
 import { LoginForm } from "@/components/login-form";
+import { Signature } from "@/components/signature";
 
 export default function LoginPage() {
   return (
@@ -19,6 +20,7 @@ export default function LoginPage() {
         <p className="text-center text-blue-200 text-xs mt-6">
           Accès réservé à l&apos;administrateur de l&apos;auto-école.
         </p>
+        <Signature className="text-center text-blue-300/80 mt-2" />
       </div>
     </div>
   );

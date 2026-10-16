@@ -15,6 +15,7 @@ import {
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Signature } from "@/components/signature";
 
 const navItems = [
   { href: "/dashboard", label: "Tableau de bord", icon: LayoutDashboard },
@@ -82,7 +83,8 @@ export function Sidebar({
       </nav>
 
       <div className="px-5 py-4 border-t border-blue-800 text-xs text-blue-300">
-        Plateforme de gestion interne
+        <p>Plateforme de gestion interne</p>
+        <Signature className="mt-1 text-blue-400" />
       </div>
     </div>
   );
